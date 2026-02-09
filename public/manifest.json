@@ -1,0 +1,13 @@
+{
+  "name": "tzbi_v0",
+  "short_name": "tzbi_v0",
+  "description": "tzbi_v0 - Your Digital Tasbeeh",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f2ec",
+  "theme_color": "#6b7f3a",
+  "orientation": "portrait",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": []
+}
