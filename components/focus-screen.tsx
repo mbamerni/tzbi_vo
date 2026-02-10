@@ -21,9 +21,11 @@ import {
   Hash,
   MoreHorizontal,
   Calendar,
+  Check,
 } from "lucide-react";
 import { format, addDays, subDays, isSameDay } from "date-fns";
 import { ar } from "date-fns/locale";
+import { getDhikrIconData } from "./groups-screen";
 
 // --- Icons ---
 const DHIKR_ICONS: Record<string, React.ReactNode> = {
@@ -291,7 +293,7 @@ function VirtueModal({ dhikr, onClose }: { dhikr: Dhikr; onClose: () => void }) 
         </div>
 
         <p className="text-muted-foreground text-sm leading-relaxed">
-          {dhikr.virtue || "لم يتم إضافة فضل لهذا الذكر."}
+          {dhikr.virtue || " "}
         </p>
         <button
           type="button"
@@ -383,6 +385,10 @@ function DhikrCardsSlider({
         const current = counters[dhikr.id] || 0;
         const isComplete = current >= dhikr.target;
 
+        const iconData = getDhikrIconData(dhikr.icon);
+        // Default to a subtle gray/primary if no specific color found, or use the data color
+        const iconColor = iconData?.color || "hsl(var(--primary))";
+
         return (
           <button
             key={dhikr.id}
@@ -392,14 +398,21 @@ function DhikrCardsSlider({
               flex flex-row items-center justify-start gap-[10px]
               min-w-[154px] w-[154px] h-[65px] px-[15px] py-2 rounded-[24px] transition-all snap-center shrink-0 overflow-hidden
               ${isActive
-                ? "neu-flat border-2 border-[#84994f]" // Active: Flat + Green Border
-                : "neu-flat border-2 border-transparent" // Inactive: Flat
+                ? "neu-flat border-2 border-[#84994f]"
+                : "neu-flat border-2 border-transparent"
               }
             `}
           >
             {/* Icon Box */}
-            <div className={`w-[32px] h-[32px] min-w-[32px] rounded-[8px] neu-pressed flex items-center justify-center text-primary`}>
-              {getDhikrIcon(dhikr.icon) ? React.cloneElement(getDhikrIcon(dhikr.icon) as React.ReactElement, { size: 20, strokeWidth: 2 }) : <Moon size={20} strokeWidth={2} />}
+            <div
+              className={`w-[32px] h-[32px] min-w-[32px] rounded-[8px] neu-pressed flex items-center justify-center`}
+              style={{ color: iconColor }}
+            >
+              {iconData ? (
+                React.cloneElement(iconData.icon as React.ReactElement, { size: 20, strokeWidth: 2 })
+              ) : (
+                <Moon size={20} strokeWidth={2} />
+              )}
             </div>
 
             {/* Content */}
@@ -499,7 +512,7 @@ export default function FocusScreen({ groups }: { groups: DhikrGroup[] }) {
         gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
         osc.start();
         osc.stop(ctx.currentTime + 0.5);
-      } else if (current >= target - 4 && current < target) {
+      } else if (current >= target - 2 && current < target) {
         osc.frequency.setValueAtTime(800, ctx.currentTime);
         gain.gain.setValueAtTime(0.05, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
@@ -696,10 +709,28 @@ export default function FocusScreen({ groups }: { groups: DhikrGroup[] }) {
         >
           {/* Inner Controls (Left) - Reset & Manual */}
           <div className="absolute top-6 left-6 flex flex-col gap-3 z-20" onClick={e => e.stopPropagation()}>
-            <div role="button" onClick={handleReset} className="w-10 h-10 rounded-full bg-secondary/80 flex items-center justify-center text-muted-foreground hover:text-foreground backdrop-blur-sm cursor-pointer transition-colors shadow-sm">
+            <div
+              role="button"
+              onClick={handleReset}
+              className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-transform active:scale-95"
+              style={{
+                background: '#F0F0F0',
+                boxShadow: '-0.946px 0.946px 1.892px 0 rgba(198, 198, 199, 0.20) inset, 0.946px -0.946px 1.892px 0 rgba(198, 198, 199, 0.20) inset, -0.946px -0.946px 1.892px 0 rgba(255, 255, 255, 0.90) inset, 0.946px 0.946px 2.366px 0 rgba(198, 198, 199, 0.90) inset',
+                color: '#A72703'
+              }}
+            >
               <RotateCcw size={18} />
             </div>
-            <div role="button" onClick={() => setShowManualInput(true)} className="w-10 h-10 rounded-full bg-secondary/80 flex items-center justify-center text-muted-foreground hover:text-foreground backdrop-blur-sm cursor-pointer transition-colors shadow-sm">
+            <div
+              role="button"
+              onClick={() => setShowManualInput(true)}
+              className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-transform active:scale-95"
+              style={{
+                background: '#F0F0F0',
+                boxShadow: '-0.946px 0.946px 1.892px 0 rgba(198, 198, 199, 0.20) inset, 0.946px -0.946px 1.892px 0 rgba(198, 198, 199, 0.20) inset, -0.946px -0.946px 1.892px 0 rgba(255, 255, 255, 0.90) inset, 0.946px 0.946px 2.366px 0 rgba(198, 198, 199, 0.90) inset',
+                color: '#6F6F6F'
+              }}
+            >
               <Hash size={18} />
             </div>
           </div>
@@ -732,7 +763,7 @@ export default function FocusScreen({ groups }: { groups: DhikrGroup[] }) {
               <CircularProgress current={currentCount} target={activeDhikr.target} />
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 {isComplete ? (
-                  <Star className="text-primary fill-primary animate-in zoom-in spin-in-12" size={32} />
+                  <Check className="text-primary animate-in zoom-in spin-in-12" size={32} strokeWidth={3} />
                 ) : (
                   <span className="text-4xl font-bold font-mono tracking-tight text-foreground">
                     {currentCount}

@@ -14,7 +14,8 @@ export function useAdhkarData() {
             const { data: groupsData, error: groupsError } = await supabase
                 .from('groups')
                 .select('*')
-                .order('sort_order', { ascending: true });
+                .order('sort_order', { ascending: true })
+                .order('created_at', { ascending: true });
 
             if (groupsError) throw groupsError;
 
@@ -22,7 +23,8 @@ export function useAdhkarData() {
             const { data: adhkarData, error: adhkarError } = await supabase
                 .from('adhkar')
                 .select('*')
-                .order('sort_order', { ascending: true });
+                .order('sort_order', { ascending: true })
+                .order('created_at', { ascending: true });
 
             if (adhkarError) throw adhkarError;
 
@@ -36,7 +38,7 @@ export function useAdhkarData() {
                         target: adhkar.target_count,
                         current: 0, // Initial local state
                         virtue: adhkar.virtue,
-                        icon: group.icon, // Inherit or specific if column added
+                        icon: adhkar.icon || group.icon, // Use specific icon if available, else inherit
                         group_id: group.id,
                         is_active: adhkar.is_active,
                         sort_order: adhkar.sort_order
@@ -150,12 +152,18 @@ export function useAdhkarData() {
 
     const addDhikr = useCallback(async (groupId: string, text: string, target: number, virtue?: string, icon?: string) => {
         try {
+            // Calculate next sort order based on current max in the group
+            const group = groups.find(g => g.id === groupId);
+            const currentMaxSort = group?.adhkar.reduce((max, d) => Math.max(max, d.sort_order || 0), 0) || 0;
+            const nextSort = currentMaxSort + 1;
+
             const { error } = await supabase.from('adhkar').insert([{
                 group_id: groupId,
                 text,
                 target_count: target,
                 virtue,
-                sort_order: 999 // Append to end
+                icon,
+                sort_order: nextSort
             }]);
             if (error) throw error;
             await fetchData();
@@ -164,14 +172,15 @@ export function useAdhkarData() {
             console.error('Error adding dhikr:', err);
             return false;
         }
-    }, [fetchData]);
+    }, [groups, fetchData]);
 
     const editDhikr = useCallback(async (id: string, text: string, target: number, virtue?: string, icon?: string) => {
         try {
             const { error } = await supabase.from('adhkar').update({
                 text,
                 target_count: target,
-                virtue
+                virtue,
+                icon
             }).eq('id', id);
             if (error) throw error;
             await fetchData();

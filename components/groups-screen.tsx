@@ -20,48 +20,69 @@ import {
   Heart,
   Flower2,
   HandMetal,
+  CloudRain,
+  Zap,
+  Award,
+  Crown,
+  Leaf,
+  Droplet,
+  Flame,
+  BookOpen,
 } from "lucide-react";
 
-const ICON_OPTIONS = [
-  { value: "moon", icon: <Moon size={20} />, label: "هلال" },
-  { value: "sun", icon: <Sun size={20} />, label: "شمس" },
-  { value: "sunrise", icon: <Sunrise size={20} />, label: "شروق" },
-  { value: "star", icon: <Star size={20} />, label: "نجمة" },
-  { value: "heart", icon: <Heart size={20} />, label: "قلب" },
-  { value: "sparkles", icon: <Sparkles size={20} />, label: "تألق" },
-  { value: "flower", icon: <Flower2 size={20} />, label: "زهرة" },
-  { value: "hand", icon: <HandMetal size={20} />, label: "يد" },
+export const ICON_OPTIONS = [
+  { value: "moon", icon: <Moon size={20} />, label: "هلال", color: "#6366f1" },
+  { value: "sun", icon: <Sun size={20} />, label: "شمس", color: "#f59e0b" },
+  { value: "sunrise", icon: <Sunrise size={20} />, label: "شروق", color: "#f97316" },
+  { value: "star", icon: <Star size={20} />, label: "نجمة", color: "#eab308" },
+  { value: "heart", icon: <Heart size={20} />, label: "قلب", color: "#ec4899" },
+  { value: "sparkles", icon: <Sparkles size={20} />, label: "تألق", color: "#8b5cf6" },
+  { value: "flower", icon: <Flower2 size={20} />, label: "زهرة", color: "#d946ef" },
+  { value: "hand", icon: <HandMetal size={20} />, label: "يد", color: "#14b8a6" },
+  { value: "cloud", icon: <CloudRain size={20} />, label: "سحابة", color: "#3b82f6" },
+  { value: "zap", icon: <Zap size={20} />, label: "برق", color: "#facc15" },
+  { value: "award", icon: <Award size={20} />, label: "وسام", color: "#f59e0b" },
+  { value: "crown", icon: <Crown size={20} />, label: "تاج", color: "#eab308" },
+  { value: "leaf", icon: <Leaf size={20} />, label: "ورقة", color: "#22c55e" },
+  { value: "droplet", icon: <Droplet size={20} />, label: "قطرة", color: "#0ea5e9" },
+  { value: "flame", icon: <Flame size={20} />, label: "شعلة", color: "#ef4444" },
+  { value: "book", icon: <BookOpen size={20} />, label: "كتاب", color: "#a855f7" },
 ];
 
 function getGroupIcon(icon: string, size = 20) {
   const iconProps = { size };
+  // Default logic for Groups (using standard color/icon mapping if needed)
+  // For Groups specifically, we removed Icon Picker so it defaults mostly to Moon or generic.
+  // But we use this helper.
   switch (icon) {
-    case "moon":
-      return <Moon {...iconProps} />;
-    case "sunrise":
-      return <Sunrise {...iconProps} />;
-    case "sun":
-      return <Sun {...iconProps} />;
-    case "mosque":
-    case "star":
-      return <Star {...iconProps} />;
-    case "heart":
-      return <Heart {...iconProps} />;
-    case "sparkles":
-      return <Sparkles {...iconProps} />;
-    case "flower":
-      return <Flower2 {...iconProps} />;
-    case "hand":
-      return <HandMetal {...iconProps} />;
-    default:
-      return <Moon {...iconProps} />;
+    case "moon": return <Moon {...iconProps} />;
+    case "sunrise": return <Sunrise {...iconProps} />;
+    case "sun": return <Sun {...iconProps} />;
+    case "star": return <Star {...iconProps} />;
+    case "heart": return <Heart {...iconProps} />;
+    case "sparkles": return <Sparkles {...iconProps} />;
+    case "flower": return <Flower2 {...iconProps} />;
+    case "hand": return <HandMetal {...iconProps} />;
+    case "cloud": return <CloudRain {...iconProps} />;
+    case "zap": return <Zap {...iconProps} />;
+    case "award": return <Award {...iconProps} />;
+    case "crown": return <Crown {...iconProps} />;
+    case "leaf": return <Leaf {...iconProps} />;
+    case "droplet": return <Droplet {...iconProps} />;
+    case "flame": return <Flame {...iconProps} />;
+    case "book": return <BookOpen {...iconProps} />;
+    default: return <Moon {...iconProps} />;
   }
 }
 
-function getDhikrIcon(icon?: string) {
+export function getDhikrIconData(icon?: string) {
   if (!icon) return null;
-  const found = ICON_OPTIONS.find((o) => o.value === icon);
-  return found ? found.icon : null;
+  return ICON_OPTIONS.find((o) => o.value === icon);
+}
+
+function getDhikrIcon(icon?: string) {
+  const data = getDhikrIconData(icon);
+  return data ? data.icon : null;
 }
 
 /* ============================
@@ -159,7 +180,7 @@ function DhikrFormModal({
             >
               {selectedIcon ? (
                 <>
-                  <span className="text-primary">
+                  <span style={{ color: ICON_OPTIONS.find((o) => o.value === selectedIcon)?.color }}>
                     {getGroupIcon(selectedIcon)}
                   </span>
                   <span>
@@ -182,13 +203,14 @@ function DhikrFormModal({
                       );
                       setShowIconPicker(false);
                     }}
-                    className={`flex flex-col items-center gap-1 p-2.5 rounded-xl transition-all min-h-[44px] ${selectedIcon === opt.value
-                      ? "bg-primary/10 text-primary border border-primary/30"
-                      : "bg-secondary text-secondary-foreground"
+                    className={`flex items-center justify-center p-3 rounded-xl transition-all min-h-[48px] ${selectedIcon === opt.value
+                      ? "bg-primary/10 border border-primary/30"
+                      : "bg-secondary hover:bg-secondary/80"
                       }`}
                   >
-                    {opt.icon}
-                    <span className="text-[10px]">{opt.label}</span>
+                    <div style={{ color: opt.color }}>
+                      {opt.icon}
+                    </div>
                   </button>
                 ))}
               </div>
@@ -271,25 +293,7 @@ function EditGroupModal({ group, onClose, onSave }: EditGroupModalProps) {
           dir="rtl"
         />
 
-        <p className="text-sm font-medium text-card-foreground mb-2">
-          أيقونة المجموعة
-        </p>
-        <div className="grid grid-cols-4 gap-2 mb-4">
-          {ICON_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => setIcon(opt.value)}
-              className={`flex flex-col items-center gap-1 p-2.5 rounded-xl transition-all min-h-[44px] ${icon === opt.value
-                ? "bg-primary/10 text-primary border border-primary/30"
-                : "bg-secondary text-secondary-foreground"
-                }`}
-            >
-              {opt.icon}
-              <span className="text-[10px]">{opt.label}</span>
-            </button>
-          ))}
-        </div>
+
 
         <div className="flex gap-2">
           <button
@@ -352,25 +356,7 @@ function AddGroupModal({ onClose, onAdd }: AddGroupModalProps) {
           dir="rtl"
         />
 
-        <p className="text-sm font-medium text-card-foreground mb-2">
-          أيقونة المجموعة
-        </p>
-        <div className="grid grid-cols-4 gap-2 mb-4">
-          {ICON_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => setIcon(opt.value)}
-              className={`flex flex-col items-center gap-1 p-2.5 rounded-xl transition-all min-h-[44px] ${icon === opt.value
-                ? "bg-primary/10 text-primary border border-primary/30"
-                : "bg-secondary text-secondary-foreground"
-                }`}
-            >
-              {opt.icon}
-              <span className="text-[10px]">{opt.label}</span>
-            </button>
-          ))}
-        </div>
+
 
         <div className="flex gap-2">
           <button
@@ -641,9 +627,7 @@ export default function GroupsScreen({
                 onCheckedChange={(c) => onToggleGroup(group.id, c)}
               />
 
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                {getGroupIcon(group.icon)}
-              </div>
+
               <button
                 type="button"
                 className="flex-1 text-right min-w-0"
