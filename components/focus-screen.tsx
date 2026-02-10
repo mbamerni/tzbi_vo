@@ -846,10 +846,10 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
               onClick={() => setShowVirtue(true)}
               className="mb-4 w-full cursor-pointer active:opacity-70 transition-opacity"
             >
-              <h2 className="font-serif text-xl sm:text-2xl text-center leading-loose text-foreground font-medium text-balance line-clamp-3 overflow-hidden text-ellipsis px-2">
+              <h2 className="font-serif text-xl sm:text-2xl text-center leading-loose text-foreground font-medium text-balance line-clamp-2 overflow-hidden text-ellipsis px-2">
                 {activeDhikr.text}
               </h2>
-              {activeDhikr.text.length > 100 && (
+              {activeDhikr.text.length > 80 && (
                 <span className="text-xs text-primary block mt-1 text-center font-medium">... المزيد</span>
               )}
             </div>
