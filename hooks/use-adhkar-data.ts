@@ -69,7 +69,8 @@ export function useAdhkarData() {
                 .select('*')
                 .eq('user_id', userId)
                 .order('sort_order', { ascending: true })
-                .order('created_at', { ascending: true });
+                .order('created_at', { ascending: true })
+                .order('id', { ascending: true });
 
             if (groupsError) throw groupsError;
 
@@ -79,7 +80,8 @@ export function useAdhkarData() {
                 .select('*')
                 .eq('user_id', userId)
                 .order('sort_order', { ascending: true })
-                .order('created_at', { ascending: true });
+                .order('created_at', { ascending: true })
+                .order('id', { ascending: true });
 
             if (adhkarError) throw adhkarError;
 
