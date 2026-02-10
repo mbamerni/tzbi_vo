@@ -497,21 +497,126 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
   );
 
   // Audio/Sound logic...
-  const playSound = (current: number, target: number) => {
+  // --- Advanced Audio Logic (Web Audio API with Silence Trimming) ---
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioBuffersRef = useRef<Record<string, AudioBuffer>>({});
+
+  // Initialize Audio Context and Preload Sounds
+  useEffect(() => {
+    const initAudio = async () => {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) return;
+
+      if (!audioContextRef.current) {
+        audioContextRef.current = new AudioContext();
+      }
+
+      const loadBuffer = async (url: string, key: string) => {
+        try {
+          const response = await fetch(url);
+          const arrayBuffer = await response.arrayBuffer();
+          if (audioContextRef.current) {
+            const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
+
+            // Trim Silence
+            const channelData = audioBuffer.getChannelData(0); // Check first channel
+            let startOffset = 0;
+            // Find first sample with significant amplitude
+            for (let i = 0; i < channelData.length; i++) {
+              if (Math.abs(channelData[i]) > 0.02) { // Threshold for "silence"
+                startOffset = i;
+                break;
+              }
+            }
+
+            // If significant silence found (e.g. > 100 samples), create a new trimmed buffer
+            // Or just store the offset. Storing offset is cheaper but playing slice is cleaner.
+            // Let's create a trimmed buffer for cleaner re-use.
+            if (startOffset > 0 && startOffset < audioBuffer.length) {
+              const trimmedLength = audioBuffer.length - startOffset;
+              const trimmedBuffer = audioContextRef.current.createBuffer(
+                audioBuffer.numberOfChannels,
+                trimmedLength,
+                audioBuffer.sampleRate
+              );
+
+              for (let channel = 0; channel < audioBuffer.numberOfChannels; channel++) {
+                const originalData = audioBuffer.getChannelData(channel);
+                const newData = trimmedBuffer.getChannelData(channel);
+                newData.set(originalData.subarray(startOffset));
+              }
+              audioBuffersRef.current[key] = trimmedBuffer;
+            } else {
+              audioBuffersRef.current[key] = audioBuffer;
+            }
+          }
+        } catch (e) {
+          console.error(`Error loading audio ${key}:`, e);
+        }
+      };
+
+      await Promise.all([
+        loadBuffer("/sounds/click-light.mp3", "light"),
+        loadBuffer("/sounds/click-heavy.mp3", "heavy")
+      ]);
+    };
+
+    initAudio();
+
+    // Cleanup
+    return () => {
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+        audioContextRef.current = null;
+      }
+    };
+  }, []);
+
+  // Wrap playSound in useCallback to be safe, although Refs handle the state.
+  const playSound = useCallback((current: number, target: number) => {
     try {
+      const ctx = audioContextRef.current;
+      if (!ctx) return;
+
+      // Ensure context is running (sometimes it suspends)
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+
+      let buffer: AudioBuffer | null = null;
+      let volume = 1.0;
+      let duration = 0;
+
       if (current === target) {
-        const audio = new Audio("/sounds/click-heavy.mp3");
-        audio.play().catch((e) => console.error("Audio play error", e));
-        if (navigator.vibrate) navigator.vibrate(50);
+        buffer = audioBuffersRef.current["heavy"];
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          navigator.vibrate(50);
+        }
       } else if (current >= target - 2 && current < target) {
-        const audio = new Audio("/sounds/click-light.mp3");
-        audio.volume = 0.6;
-        audio.play().catch((e) => console.error("Audio play error", e));
+        buffer = audioBuffersRef.current["light"];
+        volume = 0.6;
+        duration = 0.15; // Cut off quickly to keep only the first "click" of the sound
+      }
+
+      if (buffer) {
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+
+        const gainNode = ctx.createGain();
+        gainNode.gain.value = volume;
+
+        source.connect(gainNode);
+        gainNode.connect(ctx.destination);
+
+        source.start(0);
+        if (duration > 0) {
+          source.stop(ctx.currentTime + duration);
+        }
       }
     } catch (e) {
-      console.error("Audio error", e);
+      console.error("Audio playback error", e);
     }
-  };
+  }, []);
 
   /* ----------------------------------
    * Derived State
