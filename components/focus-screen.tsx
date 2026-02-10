@@ -835,40 +835,9 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
                 ${isComplete ? "bg-primary/5" : "neu-button-custom active:scale-[0.99]"} 
             `}
         >
-          {/* Inner Controls (Left) - Reset & Manual */}
-          <div className="absolute top-6 left-6 flex flex-col gap-3 z-20" onClick={e => e.stopPropagation()}>
-            <div
-              role="button"
-              onClick={handleReset}
-              className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-transform active:scale-95"
-              style={{
-                background: '#F0F0F0',
-                boxShadow: '-0.946px 0.946px 1.892px 0 rgba(198, 198, 199, 0.20) inset, 0.946px -0.946px 1.892px 0 rgba(198, 198, 199, 0.20) inset, -0.946px -0.946px 1.892px 0 rgba(255, 255, 255, 0.90) inset, 0.946px 0.946px 2.366px 0 rgba(198, 198, 199, 0.90) inset',
-                color: '#A72703'
-              }}
-            >
-              <RotateCcw size={18} />
-            </div>
-            <div
-              role="button"
-              onClick={() => setShowManualInput(true)}
-              className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-transform active:scale-95"
-              style={{
-                background: '#F0F0F0',
-                boxShadow: '-0.946px 0.946px 1.892px 0 rgba(198, 198, 199, 0.20) inset, 0.946px -0.946px 1.892px 0 rgba(198, 198, 199, 0.20) inset, -0.946px -0.946px 1.892px 0 rgba(255, 255, 255, 0.90) inset, 0.946px 0.946px 2.366px 0 rgba(198, 198, 199, 0.90) inset',
-                color: '#6F6F6F'
-              }}
-            >
-              <Hash size={18} />
-            </div>
-          </div>
 
-          {/* Inner Controls (Right) - Virtue */}
-          <div className="absolute top-6 right-6 flex flex-col gap-3 z-20" onClick={e => e.stopPropagation()}>
-            <div role="button" onClick={() => setShowVirtue(true)} className="w-10 h-10 rounded-full bg-secondary/80 flex items-center justify-center text-accent hover:text-accent/80 backdrop-blur-sm cursor-pointer transition-colors shadow-sm">
-              <Lightbulb size={18} />
-            </div>
-          </div>
+
+
 
           {/* Content Container */}
           <div className="flex-1 flex flex-col items-center justify-start pt-12 w-full max-w-[90%]">
@@ -904,6 +873,40 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
           {/* Bottom Target Indicator */}
           <div className="absolute bottom-6 text-sm font-medium text-muted-foreground bg-secondary/50 px-4 py-1.5 rounded-full backdrop-blur-sm">
             الهدف: {activeDhikr.target}
+          </div>
+
+          {/* Bottom Left Controls: Virtue, Manual, Reset */}
+          <div className="absolute bottom-6 left-6 flex flex-col gap-3 z-30" onClick={e => e.stopPropagation()}>
+            {/* 1. Virtue (Top) */}
+            <div role="button" onClick={() => setShowVirtue(true)} className="w-10 h-10 rounded-full bg-secondary/80 flex items-center justify-center text-accent hover:text-accent/80 backdrop-blur-sm cursor-pointer transition-colors shadow-sm">
+              <Lightbulb size={18} />
+            </div>
+            {/* 2. Manual */}
+            <div
+              role="button"
+              onClick={() => setShowManualInput(true)}
+              className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-transform active:scale-95"
+              style={{
+                background: '#F0F0F0',
+                boxShadow: '-0.946px 0.946px 1.892px 0 rgba(198, 198, 199, 0.20) inset, 0.946px -0.946px 1.892px 0 rgba(198, 198, 199, 0.20) inset, -0.946px -0.946px 1.892px 0 rgba(255, 255, 255, 0.90) inset, 0.946px 0.946px 2.366px 0 rgba(198, 198, 199, 0.90) inset',
+                color: '#6F6F6F'
+              }}
+            >
+              <Hash size={18} />
+            </div>
+            {/* 3. Reset (Bottom) */}
+            <div
+              role="button"
+              onClick={handleReset}
+              className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-transform active:scale-95"
+              style={{
+                background: '#F0F0F0',
+                boxShadow: '-0.946px 0.946px 1.892px 0 rgba(198, 198, 199, 0.20) inset, 0.946px -0.946px 1.892px 0 rgba(198, 198, 199, 0.20) inset, -0.946px -0.946px 1.892px 0 rgba(255, 255, 255, 0.90) inset, 0.946px 0.946px 2.366px 0 rgba(198, 198, 199, 0.90) inset',
+                color: '#A72703'
+              }}
+            >
+              <RotateCcw size={18} />
+            </div>
           </div>
 
         </button>
