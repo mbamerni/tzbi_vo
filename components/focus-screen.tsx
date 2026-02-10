@@ -644,7 +644,24 @@ export default function FocusScreen({ groups }: { groups: DhikrGroup[] }) {
     saveToDb(activeDhikr.id, val, selectedDate);
   }
 
-  if (!activeGroup) return <div className="p-8 text-center text-muted-foreground">جاري التحميل...</div>;
+  if (!activeGroup) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center p-8 text-center space-y-4">
+        <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center mx-auto">
+          <Settings2 className="opacity-30" size={32} />
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-foreground">لا توجد مجموعات نشطة</h3>
+          <p className="text-muted-foreground text-sm mt-1">
+            لم يتم العثور على أي أذكار حالياً.
+          </p>
+        </div>
+        <p className="text-xs text-muted-foreground/70">
+          انتقل إلى تبويب "المجموعات" لإضافة أو تفعيل الأذكار.
+        </p>
+      </div>
+    );
+  }
 
   if (!activeDhikr) {
     return (
