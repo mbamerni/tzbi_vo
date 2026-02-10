@@ -48,7 +48,10 @@ export default function Page() {
       <main className="flex-1 overflow-hidden relative pb-[85px]">
         {activeTab === "focus" && (
           <div className="absolute inset-0 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-[85px]">
-            <FocusScreen groups={activeGroups} />
+            <FocusScreen
+              groups={activeGroups}
+              onNavigateToGroups={() => setActiveTab("groups")}
+            />
           </div>
         )}
         {activeTab === "groups" && (

@@ -442,7 +442,12 @@ function DhikrCardsSlider({
   );
 }
 
-export default function FocusScreen({ groups }: { groups: DhikrGroup[] }) {
+interface FocusScreenProps {
+  groups: DhikrGroup[];
+  onNavigateToGroups: () => void;
+}
+
+export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenProps) {
   const [selectedDate, setSelectedDate] = useState(new Date());
 
   // State for counters and UI controls
@@ -662,6 +667,12 @@ export default function FocusScreen({ groups }: { groups: DhikrGroup[] }) {
         <p className="text-xs text-muted-foreground/70">
           انتقل إلى تبويب "المجموعات" لإضافة أو تفعيل الأذكار.
         </p>
+        <button
+          onClick={onNavigateToGroups}
+          className="bg-primary text-primary-foreground text-sm font-medium px-6 py-2 rounded-full shadow-sm hover:opacity-90 transition-opacity mt-2"
+        >
+          إضافة مجموعة أذكار
+        </button>
       </div>
     );
   }
@@ -681,6 +692,12 @@ export default function FocusScreen({ groups }: { groups: DhikrGroup[] }) {
         <p className="text-xs text-muted-foreground/70">
           انتقل إلى تبويب "المجموعات" لإضافة أذكار جديدة.
         </p>
+        <button
+          onClick={onNavigateToGroups}
+          className="bg-primary text-primary-foreground text-sm font-medium px-6 py-2 rounded-full shadow-sm hover:opacity-90 transition-opacity mt-2"
+        >
+          إضافة أذكار
+        </button>
       </div>
     );
   }
