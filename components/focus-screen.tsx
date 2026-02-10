@@ -26,6 +26,7 @@ import {
 import { format, addDays, subDays, isSameDay } from "date-fns";
 import { ar } from "date-fns/locale";
 import { getDhikrIconData } from "./groups-screen";
+import { GroupsIcon } from "./bottom-nav";
 
 // --- Icons ---
 const DHIKR_ICONS: Record<string, React.ReactNode> = {
@@ -648,7 +649,9 @@ export default function FocusScreen({ groups }: { groups: DhikrGroup[] }) {
     return (
       <div className="flex h-full flex-col items-center justify-center p-8 text-center space-y-4">
         <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center mx-auto">
-          <Settings2 className="opacity-30" size={32} />
+          <div className="opacity-30 scale-125">
+            <GroupsIcon active={false} />
+          </div>
         </div>
         <div>
           <h3 className="text-lg font-semibold text-foreground">لا توجد مجموعات نشطة</h3>

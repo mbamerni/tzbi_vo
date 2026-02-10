@@ -20,7 +20,7 @@ const FocusIcon = ({ active }: { active: boolean }) => (
     </svg>
 );
 
-const GroupsIcon = ({ active }: { active: boolean }) => (
+export const GroupsIcon = ({ active }: { active: boolean }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none">
         <path
             d="M10.6667 8H28M10.6667 16H28M10.6667 24H28M4 8H4.01333M4 16H4.01333M4 24H4.01333"
