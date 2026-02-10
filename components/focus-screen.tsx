@@ -674,6 +674,10 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
   const saveToDb = async (dhikrId: string, count: number, date: Date) => {
     try {
       const dateStr = format(date, "yyyy-MM-dd");
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+
+      if (!userId) return; // Should likely handle error or queue
 
       // Check for existing record
       const { data: existing } = await supabase
@@ -682,6 +686,10 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
         .eq("dhikr_id", dhikrId)
         .eq("log_date", dateStr)
         .single();
+      // RLS will now filter by user_id automatically if we added the policy, 
+      // but explicit .eq('user_id', userId) is safe practices too, 
+      // though strictly RLS handles `USING (user_id = auth.uid())`.
+      // The issue is INSERT.
 
       if (existing) {
         await supabase
@@ -691,7 +699,12 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
       } else {
         await supabase
           .from("daily_logs")
-          .insert({ dhikr_id: dhikrId, count, log_date: dateStr });
+          .insert({
+            dhikr_id: dhikrId,
+            count,
+            log_date: dateStr,
+            user_id: userId
+          });
       }
     } catch (e) {
       console.error("Error saving progress:", e);
