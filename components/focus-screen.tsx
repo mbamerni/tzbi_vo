@@ -26,7 +26,6 @@ import {
 import { format, addDays, subDays, isSameDay } from "date-fns";
 import { ar } from "date-fns/locale";
 import { getDhikrIconData } from "./groups-screen";
-import { getUserId } from "@/lib/user-identity";
 
 // --- Icons ---
 const DHIKR_ICONS: Record<string, React.ReactNode> = {
@@ -526,14 +525,6 @@ export default function FocusScreen({ groups }: { groups: DhikrGroup[] }) {
   };
 
   /* ----------------------------------
-   * State: User ID Debug
-   * ---------------------------------- */
-  const [userId, setUserId] = useState<string>("");
-  useEffect(() => {
-    setUserId(getUserId() || "");
-  }, []);
-
-  /* ----------------------------------
    * Derived State
    * ---------------------------------- */
   // --- Persistence Logic ---
@@ -786,14 +777,8 @@ export default function FocusScreen({ groups }: { groups: DhikrGroup[] }) {
           </div>
 
           {/* Bottom Target Indicator */}
-          <div className="absolute bottom-6 flex flex-col items-center gap-1">
-            <div className="text-sm font-medium text-muted-foreground bg-secondary/50 px-4 py-1.5 rounded-full backdrop-blur-sm">
-              الهدف: {activeDhikr.target}
-            </div>
-            {/* DEBUG: Show User ID */}
-            <div className="text-[10px] text-muted-foreground/30 font-mono">
-              ID: {userId?.slice(0, 8)}...
-            </div>
+          <div className="absolute bottom-6 text-sm font-medium text-muted-foreground bg-secondary/50 px-4 py-1.5 rounded-full backdrop-blur-sm">
+            الهدف: {activeDhikr.target}
           </div>
 
         </button>
