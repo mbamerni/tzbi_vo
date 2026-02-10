@@ -842,25 +842,15 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
           {/* Content Container */}
           <div className="flex-1 flex flex-col items-center justify-start pt-12 w-full max-w-[90%]">
             {/* Dhikr Text */}
-            <div
-              onClick={() => setShowVirtue(true)}
-              className="mb-4 w-full cursor-pointer active:opacity-70 transition-opacity"
-            >
-              <h2 className="font-serif text-xl sm:text-2xl text-center leading-loose text-foreground font-medium text-balance line-clamp-2 overflow-hidden text-ellipsis px-2">
-                {activeDhikr.text}
-              </h2>
-              {activeDhikr.text.length > 80 && (
-                <span className="text-xs text-primary block mt-1 text-center font-medium">... المزيد</span>
-              )}
-            </div>
+            <h2 className="font-serif text-xl sm:text-2xl text-center leading-loose text-foreground font-medium text-balance mb-4 line-clamp-3 overflow-hidden text-ellipsis px-2">
+              {activeDhikr.text}
+            </h2>
 
             {/* Virtue Hint (Small) */}
             {activeDhikr.virtue && (
-              <div onClick={() => setShowVirtue(true)} className="cursor-pointer active:opacity-70 mb-8">
-                <p className="text-xs text-muted-foreground text-center line-clamp-1 opacity-70 max-w-xs px-2">
-                  {activeDhikr.virtue}
-                </p>
-              </div>
+              <p className="text-xs text-muted-foreground text-center line-clamp-2 opacity-70 max-w-xs mb-8">
+                {activeDhikr.virtue}
+              </p>
             )}
           </div>
 
