@@ -878,18 +878,25 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
           {/* Bottom Left Controls: Virtue, Manual, Reset */}
           <div className="absolute bottom-6 left-6 flex flex-col gap-3 z-30" onClick={e => e.stopPropagation()}>
             {/* 1. Virtue (Top) */}
-            <div role="button" onClick={() => setShowVirtue(true)} className="w-10 h-10 rounded-full bg-secondary/80 flex items-center justify-center text-accent hover:text-accent/80 backdrop-blur-sm cursor-pointer transition-colors shadow-sm">
+            <div
+              role="button"
+              onClick={() => setShowVirtue(true)}
+              className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-transform active:scale-95 text-accent"
+              style={{
+                background: '#F0F0F0',
+                boxShadow: '-0.946px 0.946px 1.892px 0 rgba(198, 198, 199, 0.20) inset, 0.946px -0.946px 1.892px 0 rgba(198, 198, 199, 0.20) inset, -0.946px -0.946px 1.892px 0 rgba(255, 255, 255, 0.90) inset, 0.946px 0.946px 2.366px 0 rgba(198, 198, 199, 0.90) inset'
+              }}
+            >
               <Lightbulb size={18} />
             </div>
             {/* 2. Manual */}
             <div
               role="button"
               onClick={() => setShowManualInput(true)}
-              className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-transform active:scale-95"
+              className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-transform active:scale-95 text-accent"
               style={{
                 background: '#F0F0F0',
-                boxShadow: '-0.946px 0.946px 1.892px 0 rgba(198, 198, 199, 0.20) inset, 0.946px -0.946px 1.892px 0 rgba(198, 198, 199, 0.20) inset, -0.946px -0.946px 1.892px 0 rgba(255, 255, 255, 0.90) inset, 0.946px 0.946px 2.366px 0 rgba(198, 198, 199, 0.90) inset',
-                color: '#6F6F6F'
+                boxShadow: '-0.946px 0.946px 1.892px 0 rgba(198, 198, 199, 0.20) inset, 0.946px -0.946px 1.892px 0 rgba(198, 198, 199, 0.20) inset, -0.946px -0.946px 1.892px 0 rgba(255, 255, 255, 0.90) inset, 0.946px 0.946px 2.366px 0 rgba(198, 198, 199, 0.90) inset'
               }}
             >
               <Hash size={18} />
