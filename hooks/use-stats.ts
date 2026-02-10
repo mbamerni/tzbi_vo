@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@/utils/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/user-identity';
 import { startOfDay, subDays, format, isSameDay, differenceInCalendarDays, parseISO } from 'date-fns';
 
@@ -35,7 +35,6 @@ export function useStats() {
         topAdhkar: [],
     });
     const [loading, setLoading] = useState(true);
-    const supabase = createClient();
 
     const fetchStats = useCallback(async () => {
         const userId = getUserId();
@@ -184,7 +183,7 @@ export function useStats() {
         } finally {
             setLoading(false);
         }
-    }, [supabase]);
+    }, []);
 
     useEffect(() => {
         fetchStats();
