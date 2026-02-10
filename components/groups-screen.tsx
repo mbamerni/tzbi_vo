@@ -9,7 +9,7 @@ import {
   Sunrise,
   Star,
   Plus,
-  ChevronLeft,
+  ChevronRight,
   ChevronUp,
   ChevronDown,
   Pencil,
@@ -476,11 +476,8 @@ export default function GroupsScreen({
             onClick={() => setSelectedGroup(null)}
             className="p-2.5 rounded-xl bg-secondary text-secondary-foreground min-h-[44px] min-w-[44px] flex items-center justify-center"
           >
-            <ChevronLeft size={18} />
+            <ChevronRight size={18} />
           </button>
-          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-            {getGroupIcon(activeGroupData.icon, 18)}
-          </div>
           <div className="flex-1">
             <h2 className="font-semibold text-foreground text-lg leading-tight">
               {activeGroupData.name}
@@ -509,7 +506,7 @@ export default function GroupsScreen({
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="font-serif text-foreground text-base leading-relaxed">
+                  <p className="font-medium text-card-foreground truncate text-right">
                     {dhikr.text}
                   </p>
                   <div className="flex items-center gap-3 mt-1.5">
