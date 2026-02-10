@@ -380,7 +380,7 @@ function DhikrCardsSlider({
   }, [activeDhikrId]);
 
   return (
-    <div ref={scrollRef} className="flex gap-3 overflow-x-auto px-4 py-4 scrollbar-hide snap-x">
+    <div ref={scrollRef} className="flex gap-3 overflow-x-auto overflow-y-hidden px-4 py-4 scrollbar-hide snap-x touch-pan-x" style={{ touchAction: "pan-x" }}>
       {adhkar.map((dhikr) => {
         const isActive = activeDhikrId === dhikr.id;
         const current = counters[dhikr.id] || 0;
