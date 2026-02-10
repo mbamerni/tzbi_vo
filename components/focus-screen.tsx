@@ -452,6 +452,7 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
 
   // State for counters and UI controls
   const [counters, setCounters] = useState<Record<string, number>>({});
+  const [countersLoaded, setCountersLoaded] = useState(false);
   const [showVirtue, setShowVirtue] = useState(false);
   const [showManualInput, setShowManualInput] = useState(false);
   const [tapAnimation, setTapAnimation] = useState(false);
@@ -473,17 +474,33 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
   const [activeDhikrId, setActiveDhikrId] = useState<string | null>(null);
 
   // Set initial active dhikr when data loads or filter changes
+  // Set initial active dhikr when data loads or filter changes
   useEffect(() => {
-    if (visibleAdhkar.length > 0) {
-      // Check if current activeDhikr is still in the visible list
-      const stillExists = visibleAdhkar.find(d => d.id === activeDhikrId);
-      if (!stillExists) {
+    // Only proceed if we have visible adhkar
+    if (visibleAdhkar.length === 0) {
+      setActiveDhikrId(null);
+      return;
+    }
+
+    // Wait until counters are loaded to determine incomplete status properly
+    if (!countersLoaded) return;
+
+    // Check if current activeDhikr is still in the visible list
+    const stillExists = visibleAdhkar.find(d => d.id === activeDhikrId);
+
+    // If no active dhikr (first load) or it was filtered out
+    if (!activeDhikrId || !stillExists) {
+      // Find the first INCOMPLETE dhikr to auto-select
+      const firstIncomplete = visibleAdhkar.find(d => (counters[d.id] || 0) < d.target);
+
+      if (firstIncomplete) {
+        setActiveDhikrId(firstIncomplete.id);
+      } else {
+        // If all are complete, default to the first one
         setActiveDhikrId(visibleAdhkar[0].id);
       }
-    } else {
-      setActiveDhikrId(null);
     }
-  }, [visibleAdhkar, activeDhikrId]);
+  }, [visibleAdhkar, activeDhikrId, counters, countersLoaded]);
 
   const activeDhikr = visibleAdhkar.find(d => d.id === activeDhikrId) || null;
   const activeGroup = groups.find(g => g.id === selectedGroupId) || groups[0]; // Fallback for UI if needed
@@ -627,6 +644,7 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
   // Fetch counts when date changes
   useEffect(() => {
     const fetchCounts = async () => {
+      setCountersLoaded(false); // Reset loading state on date change
       try {
         const dateStr = format(selectedDate, "yyyy-MM-dd");
         // Ensure user is logged in? Assuming Supabase client handles session or public RLS.
@@ -642,8 +660,10 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
           newCounters[row.dhikr_id] = row.count;
         });
         setCounters(newCounters);
+        setCountersLoaded(true);
       } catch (e) {
         console.error("Error fetching counts:", e);
+        setCountersLoaded(true); // Ensure loading doesn't hang on error
       }
     };
     fetchCounts();
