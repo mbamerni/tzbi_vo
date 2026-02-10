@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import { createClient } from '@/lib/supabase/client';
 import { format, subDays, startOfDay, endOfDay, parseISO } from 'date-fns';
 import { ar } from 'date-fns/locale';
 
@@ -34,6 +34,8 @@ export function useAnalytics() {
         end: new Date()
     });
 
+    const supabase = createClient();
+
     const fetchStats = useCallback(async () => {
         try {
             setLoading(true);
@@ -41,6 +43,7 @@ export function useAnalytics() {
             const endDateStr = format(dateRange.end, 'yyyy-MM-dd');
 
             // 1. Fetch Logs in Range
+            // RLS should handle filtering by user_id automatically if set up correctly
             const { data: logs, error: logsError } = await supabase
                 .from('daily_logs')
                 .select(`
@@ -112,7 +115,7 @@ export function useAnalytics() {
         } finally {
             setLoading(false);
         }
-    }, [dateRange]);
+    }, [dateRange, supabase]);
 
     useEffect(() => {
         fetchStats();

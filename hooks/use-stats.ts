@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
-import { getUserId } from '@/lib/user-identity';
+import { createClient } from '@/lib/supabase/client';
 import { startOfDay, subDays, format, isSameDay, differenceInCalendarDays, parseISO } from 'date-fns';
+import { ar } from 'date-fns/locale';
+import { calculateStreaks } from '@/lib/analytics';
 
 export interface DailyActivity {
     date: string;
@@ -22,6 +23,7 @@ export interface StatsData {
     totalCount: number;
     todayCount: number;
     streak: number;
+    longestStreak: number;
     dailyActivity: DailyActivity[];
     topAdhkar: TopDhikr[];
 }
@@ -31,32 +33,40 @@ export function useStats() {
         totalCount: 0,
         todayCount: 0,
         streak: 0,
+        longestStreak: 0,
         dailyActivity: [],
         topAdhkar: [],
     });
     const [loading, setLoading] = useState(true);
+    const supabase = createClient();
 
     const fetchStats = useCallback(async () => {
-        const userId = getUserId();
-        if (!userId) {
-            setLoading(false);
-            return;
-        }
-
         try {
             setLoading(true);
+
+            // Get current user (session should be established by useAdhkarData or root layout)
+            const { data: { session } } = await supabase.auth.getSession();
+            const userId = session?.user?.id;
+
+            if (!userId) {
+                // If not logged in, we can't show stats yet.
+                // In a perfect world, we might wait or trigger sign-in, 
+                // but we assume useAdhkarData (top-level) handles sign-in.
+                setLoading(false);
+                return;
+            }
 
             const { data: logs, error } = await supabase
                 .from('daily_logs')
                 .select(`
-          count,
-          log_date,
-          dhikr_id,
-          adhkar (
-            text,
-            target_count
-          )
-        `);
+                    count,
+                    log_date,
+                    dhikr_id,
+                    adhkar (
+                        text,
+                        target_count
+                    )
+                `);
 
             if (error) throw error;
 
@@ -76,6 +86,7 @@ export function useStats() {
             const uniqueDays = new Set<string>();
 
             logs.forEach((log: any) => {
+                // Filter out if adhkar is null (deleted?)
                 if (!log.adhkar) return;
 
                 const count = log.count || 0;
@@ -106,27 +117,7 @@ export function useStats() {
             });
 
             // --- Streak Calculation ---
-            const sortedDays = Array.from(uniqueDays).sort().reverse();
-            let currentStreak = 0;
-            if (sortedDays.length > 0) {
-                const lastActive = parseISO(sortedDays[0]);
-                const todayDate = new Date();
-                const pToday = parseISO(format(todayDate, 'yyyy-MM-dd'));
-                const diffToLast = differenceInCalendarDays(pToday, lastActive);
-
-                if (diffToLast <= 1) {
-                    currentStreak = 1;
-                    for (let i = 0; i < sortedDays.length - 1; i++) {
-                        const curr = parseISO(sortedDays[i]);
-                        const prev = parseISO(sortedDays[i + 1]);
-                        const diff = differenceInCalendarDays(curr, prev);
-                        if (diff === 1) currentStreak++;
-                        else break;
-                    }
-                } else {
-                    currentStreak = 0;
-                }
-            }
+            const { currentStreak, longestStreak } = calculateStreaks(Array.from(uniqueDays));
 
             // --- Last 7 Days ---
             const last7Days: DailyActivity[] = [];
@@ -174,6 +165,7 @@ export function useStats() {
                 totalCount: total,
                 todayCount: today,
                 streak: currentStreak,
+                longestStreak: longestStreak,
                 dailyActivity: last7Days,
                 topAdhkar: topList
             });
@@ -183,7 +175,7 @@ export function useStats() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [supabase]);
 
     useEffect(() => {
         fetchStats();

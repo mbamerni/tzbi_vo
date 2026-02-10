@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAdhkarData } from "@/hooks/use-adhkar-data";
-import { getUserId } from "@/lib/user-identity";
 import FocusScreen from "@/components/focus-screen";
 import GroupsScreen from "@/components/groups-screen";
 import AnalyticsScreen from "@/components/analytics-screen";
@@ -17,6 +16,7 @@ export default function Page() {
     groups,
     activeGroups,
     loading,
+    userId,
     toggleGroup,
     toggleDhikr,
     addGroup,
@@ -28,11 +28,6 @@ export default function Page() {
     reorderGroup,
     reorderDhikr
   } = useAdhkarData();
-
-  const [userId, setUserId] = useState<string>("");
-  useEffect(() => {
-    setUserId(getUserId() || "");
-  }, []);
 
   if (loading && groups.length === 0) {
     return (

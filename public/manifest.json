@@ -1,13 +1,20 @@
 {
-  "name": "tzbi_v0",
-  "short_name": "tzbi_v0",
-  "description": "tzbi_v0 - Your Digital Tasbeeh",
+  "name": "أذكاري",
+  "short_name": "أذكاري",
+  "description": "تطبيق أذكاري - رفيقك اليومي لذكر الله",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f5f2ec",
-  "theme_color": "#6b7f3a",
+  "background_color": "#ffffff",
+  "theme_color": "#84994f",
   "orientation": "portrait",
   "dir": "rtl",
   "lang": "ar",
-  "icons": []
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
 }

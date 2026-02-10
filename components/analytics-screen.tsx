@@ -59,20 +59,33 @@ export default function AnalyticsScreen() {
               <h3 className="text-xl font-bold text-foreground font-mono">
                 {stats.streak} <span className="text-xs font-sans font-normal text-muted-foreground">أيام</span>
               </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">تتابع متواصل</p>
+              <p className="text-xs text-muted-foreground mt-0.5">تتابع حالي</p>
+            </div>
+          </div>
+
+          {/* Longest Streak */}
+          <div className="bg-card p-4 rounded-2xl border border-border shadow-sm flex flex-col justify-between">
+            <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 mb-3">
+              <Trophy size={18} />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-foreground font-mono">
+                {stats.longestStreak} <span className="text-xs font-sans font-normal text-muted-foreground">أيام</span>
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">أطول تتابع</p>
             </div>
           </div>
 
           {/* Lifetime Total */}
-          <div className="bg-card p-4 rounded-2xl border border-border shadow-sm flex flex-col justify-between">
-            <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-3">
-              <Trophy size={18} />
-            </div>
+          <div className="col-span-2 bg-card p-4 rounded-2xl border border-border shadow-sm flex items-center justify-between">
             <div>
-              <h3 className="text-xl font-bold text-foreground font-mono truncate">
+              <p className="text-xs text-muted-foreground mb-1">مجموع الأذكار الكلي</p>
+              <h3 className="text-2xl font-bold text-foreground font-mono truncate">
                 {stats.totalCount}
               </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">مجموع الأذكار</p>
+            </div>
+            <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
+              <Hash size={20} />
             </div>
           </div>
         </div>

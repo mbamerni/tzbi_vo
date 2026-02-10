@@ -1,34 +1,44 @@
 import { useEffect, useState, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
-import { DhikrGroup, Dhikr, DEFAULT_GROUPS } from '../lib/athkari-data';
-import { getUserId } from '../lib/user-identity';
+import { createClient } from '@/lib/supabase/client'; // Use browser client
+import { DhikrGroup, Dhikr, DEFAULT_GROUPS } from '@/lib/athkari-data';
 
 export function useAdhkarData() {
     const [groups, setGroups] = useState<DhikrGroup[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [userId, setUserId] = useState<string | null>(null);
+
+    const supabase = createClient();
 
     const fetchData = useCallback(async () => {
-        const userId = getUserId();
-        if (!userId) {
-            setLoading(false);
-            return;
-        }
-
         try {
             setLoading(true);
 
-            // Check if user has any groups
+            // 1. Auth Check (Anonymous)
+            const { data: { session } } = await supabase.auth.getSession();
+            let currentUserId = session?.user?.id;
+
+            if (!currentUserId) {
+                console.log('Signing in anonymously...');
+                const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
+                if (authError) throw authError;
+                currentUserId = authData.user?.id;
+            }
+
+            if (!currentUserId) throw new Error('Failed to authenticate');
+            setUserId(currentUserId);
+
+            // 2. Fetch Groups
             const { count, error: countError } = await supabase
                 .from('groups')
                 .select('*', { count: 'exact', head: true })
-                .eq('user_id', userId);
+                .eq('user_id', currentUserId);
 
             if (countError) throw countError;
 
-            // If no data, SEED default data
+            // 3. Seeding if empty
             if (count === 0) {
-                console.log('Seeding data for new user:', userId);
+                console.log('Seeding data for new user:', currentUserId);
                 for (let i = 0; i < DEFAULT_GROUPS.length; i++) {
                     const dGroup = DEFAULT_GROUPS[i];
                     const { data: newGroup, error: gError } = await supabase
@@ -38,7 +48,7 @@ export function useAdhkarData() {
                             icon: dGroup.icon,
                             slug: `group-${Date.now()}-${i}`,
                             sort_order: i + 1,
-                            user_id: userId,
+                            user_id: currentUserId,
                             is_active: true
                         })
                         .select()
@@ -52,9 +62,9 @@ export function useAdhkarData() {
                             text: d.text,
                             target_count: d.target,
                             virtue: d.virtue,
-                            user_id: userId,
+                            user_id: currentUserId,
                             sort_order: idx + 1,
-                            icon: d.icon || undefined, // inherit or specific
+                            icon: d.icon || undefined,
                             is_active: true
                         }));
                         const { error: aError } = await supabase.from('adhkar').insert(adhkarPayload);
@@ -63,29 +73,28 @@ export function useAdhkarData() {
                 }
             }
 
-            // Fetch Groups for THIS user
+            // 4. Fetch Groups & Adhkar
             const { data: groupsData, error: groupsError } = await supabase
                 .from('groups')
                 .select('*')
-                .eq('user_id', userId)
+                .eq('user_id', currentUserId)
                 .order('sort_order', { ascending: true })
                 .order('created_at', { ascending: true })
                 .order('id', { ascending: true });
 
             if (groupsError) throw groupsError;
 
-            // Fetch Adhkar for THIS user
             const { data: adhkarData, error: adhkarError } = await supabase
                 .from('adhkar')
                 .select('*')
-                .eq('user_id', userId)
+                .eq('user_id', currentUserId)
                 .order('sort_order', { ascending: true })
                 .order('created_at', { ascending: true })
                 .order('id', { ascending: true });
 
             if (adhkarError) throw adhkarError;
 
-            // Transform and combine
+            // 5. Transform
             const combinedGroups: DhikrGroup[] = groupsData.map((group) => {
                 const groupAdhkar = adhkarData
                     .filter((adhkar) => adhkar.group_id === group.id)
@@ -93,7 +102,7 @@ export function useAdhkarData() {
                         id: adhkar.id,
                         text: adhkar.text,
                         target: adhkar.target_count,
-                        current: 0, // Initial local state
+                        current: 0,
                         virtue: adhkar.virtue,
                         icon: adhkar.icon || group.icon,
                         group_id: group.id,
@@ -114,7 +123,6 @@ export function useAdhkarData() {
             setGroups(combinedGroups);
         } catch (err: any) {
             console.error('Error fetching data:', err);
-            // If tables don't exist yet, just show empty state instead of infinite loading/error
             if (err?.code === 'PGRST205' || err?.message?.includes('does not exist')) {
                 setGroups([]);
                 setError(null);
@@ -124,13 +132,13 @@ export function useAdhkarData() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [supabase]);
 
     useEffect(() => {
         fetchData();
     }, [fetchData]);
 
-    // Derived state for active groups (for Focus Screen)
+    // Derived state
     const activeGroups = groups
         .filter(g => g.is_active !== false)
         .map(g => ({
@@ -139,37 +147,30 @@ export function useAdhkarData() {
         }));
 
     const toggleGroup = useCallback(async (id: string, state: boolean) => {
-        // Optimistic update
         setGroups(prev => prev.map(g => g.id === id ? { ...g, is_active: state } : g));
-
         try {
             await supabase.from('groups').update({ is_active: state }).eq('id', id);
         } catch (err) {
             console.error('Error toggling group:', err);
-            // Revert on error
             await fetchData();
         }
-    }, [fetchData]);
+    }, [fetchData, supabase]);
 
     const toggleDhikr = useCallback(async (id: string, state: boolean) => {
-        // Optimistic update
         setGroups(prev => prev.map(g => ({
             ...g,
             adhkar: g.adhkar.map(d => d.id === id ? { ...d, is_active: state } : d)
         })));
-
         try {
             await supabase.from('adhkar').update({ is_active: state }).eq('id', id);
         } catch (err) {
             console.error('Error toggling dhikr:', err);
             await fetchData();
         }
-    }, [fetchData]);
+    }, [fetchData, supabase]);
 
     const addGroup = useCallback(async (name: string, icon: string) => {
-        const userId = getUserId();
         if (!userId) return false;
-
         try {
             const { error } = await supabase.from('groups').insert([{
                 name,
@@ -186,7 +187,7 @@ export function useAdhkarData() {
             console.error('Error adding group:', err);
             return false;
         }
-    }, [groups.length, fetchData]);
+    }, [groups.length, fetchData, userId, supabase]);
 
     const editGroup = useCallback(async (id: string, name: string, icon: string) => {
         try {
@@ -198,7 +199,7 @@ export function useAdhkarData() {
             console.error('Error updating group:', err);
             return false;
         }
-    }, [fetchData]);
+    }, [fetchData, supabase]);
 
     const deleteGroup = useCallback(async (id: string) => {
         try {
@@ -210,14 +211,11 @@ export function useAdhkarData() {
             console.error('Error deleting group:', err);
             return false;
         }
-    }, [fetchData]);
+    }, [fetchData, supabase]);
 
     const addDhikr = useCallback(async (groupId: string, text: string, target: number, virtue?: string, icon?: string) => {
-        const userId = getUserId();
         if (!userId) return false;
-
         try {
-            // Calculate next sort order based on current max in the group
             const group = groups.find(g => g.id === groupId);
             const currentMaxSort = group?.adhkar.reduce((max, d) => Math.max(max, d.sort_order || 0), 0) || 0;
             const nextSort = currentMaxSort + 1;
@@ -239,7 +237,7 @@ export function useAdhkarData() {
             console.error('Error adding dhikr:', err);
             return false;
         }
-    }, [groups, fetchData]);
+    }, [groups, fetchData, userId, supabase]);
 
     const editDhikr = useCallback(async (id: string, text: string, target: number, virtue?: string, icon?: string) => {
         try {
@@ -256,7 +254,7 @@ export function useAdhkarData() {
             console.error('Error updating dhikr:', err);
             return false;
         }
-    }, [fetchData]);
+    }, [fetchData, supabase]);
 
     const deleteDhikr = useCallback(async (id: string) => {
         try {
@@ -268,7 +266,7 @@ export function useAdhkarData() {
             console.error('Error deleting dhikr:', err);
             return false;
         }
-    }, [fetchData]);
+    }, [fetchData, supabase]);
 
     const reorderGroup = useCallback(async (id: string, direction: 'up' | 'down') => {
         const currentIndex = groups.findIndex(g => g.id === id);
@@ -280,20 +278,12 @@ export function useAdhkarData() {
         const currentGroup = groups[currentIndex];
         const neighborGroup = groups[neighborIndex];
 
-        // Swap sort orders
-        // Use index-based sort order if actual sort_order is missing or duplicate
-        // But best to rely on current array position as truth
         const currentSort = currentGroup.sort_order ?? currentIndex + 1;
         const neighborSort = neighborGroup.sort_order ?? neighborIndex + 1;
 
-        // Optimistic update
         const newGroups = [...groups];
-        // Swap positions in array
         newGroups[currentIndex] = neighborGroup;
         newGroups[neighborIndex] = currentGroup;
-        // Update sort_order properties in local state to reflect swap (though DB update matters more)
-        // Actually, we just swapped them in the array, so their order is visually correct.
-        // We should update the DB with swapped values.
 
         setGroups(newGroups);
 
@@ -306,10 +296,9 @@ export function useAdhkarData() {
             console.error('Error reordering groups:', err);
             await fetchData();
         }
-    }, [groups, fetchData]);
+    }, [groups, fetchData, supabase]);
 
     const reorderDhikr = useCallback(async (id: string, direction: 'up' | 'down') => {
-        // Find group and dhikr
         let groupIndex = -1;
         let dhikrIndex = -1;
 
@@ -336,7 +325,6 @@ export function useAdhkarData() {
         const currentSort = currentDhikr.sort_order ?? dhikrIndex + 1;
         const neighborSort = neighborDhikr.sort_order ?? neighborIndex + 1;
 
-        // Optimistic
         const newGroups = [...groups];
         const newAdhkar = [...adhkarList];
         newAdhkar[dhikrIndex] = neighborDhikr;
@@ -354,14 +342,14 @@ export function useAdhkarData() {
             console.error('Error reordering dhikr:', err);
             await fetchData();
         }
-    }, [groups, fetchData]);
-
+    }, [groups, fetchData, supabase]);
 
     return {
         groups,
         activeGroups,
         loading,
         error,
+        userId,
         refetch: fetchData,
         toggleGroup,
         toggleDhikr,

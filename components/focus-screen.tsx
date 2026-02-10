@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import type { DhikrGroup, Dhikr } from "@/lib/athkari-data";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 import {
   Moon,
   Sun,
@@ -410,7 +410,7 @@ function DhikrCardsSlider({
               style={{ color: iconColor }}
             >
               {iconData ? (
-                React.cloneElement(iconData.icon as React.ReactElement, { size: 20, strokeWidth: 2 })
+                React.cloneElement(iconData.icon as any, { size: 20, strokeWidth: 2 })
               ) : (
                 <Moon size={20} strokeWidth={2} />
               )}
@@ -448,6 +448,7 @@ interface FocusScreenProps {
 }
 
 export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenProps) {
+  const supabase = createClient();
   const [selectedDate, setSelectedDate] = useState(new Date());
 
   // State for counters and UI controls
@@ -721,13 +722,18 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
       setTapAnimation(true);
       setTimeout(() => setTapAnimation(false), 150);
 
+      // Haptic Feedback
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(10);
+      }
+
       playSound(newCount, activeDhikr.target);
 
       // Debounced Save
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = setTimeout(() => {
         saveToDb(activeDhikr.id, newCount, selectedDate);
-      }, 1000); // Save after 1s of inactivity
+      }, 2000); // Save after 2s of inactivity
 
       // If complete, maybe force save immediately?
       if (newCount >= activeDhikr.target) {
