@@ -498,32 +498,15 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
 
   // Audio/Sound logic...
   const playSound = (current: number, target: number) => {
-    /* ... existing audio code kept brief or referenced? Better to keep it if I'm replacing the block ... */
-    /* I'll rewrite the audio section to be safe, or just insert the new logic above/below if possible */
-    /* The replace block covers lines 450-600, which includes handleTap, handleReset, etc. */
-    /* I need to be careful to preserve playSound logic if I replace it. */
-    /* I will include the full playSound implementation to avoid breaking it. */
     try {
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContext) return;
-      const ctx = new AudioContext();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
       if (current === target) {
-        osc.frequency.setValueAtTime(500, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(1000, ctx.currentTime + 0.1);
-        gain.gain.setValueAtTime(0.1, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.5);
+        const audio = new Audio("/sounds/click-heavy.mp3");
+        audio.play().catch((e) => console.error("Audio play error", e));
+        if (navigator.vibrate) navigator.vibrate(50);
       } else if (current >= target - 2 && current < target) {
-        osc.frequency.setValueAtTime(800, ctx.currentTime);
-        gain.gain.setValueAtTime(0.05, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.05);
+        const audio = new Audio("/sounds/click-light.mp3");
+        audio.volume = 0.6;
+        audio.play().catch((e) => console.error("Audio play error", e));
       }
     } catch (e) {
       console.error("Audio error", e);

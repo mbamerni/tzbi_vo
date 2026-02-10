@@ -1,0 +1,1 @@
+TRUNCATE TABLE adhkar, groups CASCADE;
