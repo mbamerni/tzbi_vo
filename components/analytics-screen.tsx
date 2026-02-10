@@ -116,27 +116,47 @@ export default function AnalyticsScreen() {
           </div>
         </div>
 
-        {/* Top Adhkar */}
+        {/* Top Adhkar (Most Committed) */}
         <div>
           <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
             <Trophy size={18} className="text-yellow-500" />
-            الأكثر تكراراً
+            الأكثر التزاماً
           </h3>
           <div className="space-y-3">
             {stats.topAdhkar.length > 0 ? (
               stats.topAdhkar.map((item, index) => (
-                <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-card border border-border">
-                  <div className="flex items-center gap-3 overflow-hidden">
-                    <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-sm font-bold text-muted-foreground shrink-0">
-                      #{index + 1}
+                <div key={item.id} className="p-3 rounded-xl bg-card border border-border">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-sm font-bold text-muted-foreground shrink-0">
+                        #{index + 1}
+                      </div>
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {item.text}
+                      </p>
                     </div>
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {item.text}
-                    </p>
+                    <span className="text-sm font-mono font-bold text-primary mr-1 shrink-0">
+                      {Math.round(item.adherence)}%
+                    </span>
                   </div>
-                  <span className="text-sm font-mono font-bold text-primary mr-3 shrink-0">
-                    {item.count}
-                  </span>
+
+                  {/* Progress Bar */}
+                  <div className="w-full bg-secondary/50 rounded-full h-2 mb-1">
+                    <div
+                      className="bg-primary h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(item.adherence, 100)}%` }}
+                    />
+                  </div>
+
+                  {/* Stats Detail */}
+                  <div className="flex justify-between text-[10px] text-muted-foreground px-1">
+                    <span>
+                      إجمالي: {item.count} / {item.target * item.daysActive}
+                    </span>
+                    <span>
+                      خلال {item.daysActive} يوم
+                    </span>
+                  </div>
                 </div>
               ))
             ) : (
