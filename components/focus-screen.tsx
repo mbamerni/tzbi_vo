@@ -229,10 +229,39 @@ function DayStrip({
       setDailyStats(prev => ({ ...prev, ...stats }));
     };
 
+
+    // Get active targets from props (flat list) - Keep inside effect or memo
+    const allAdhkar = groups.flatMap(g => g.adhkar);
+    if (allAdhkar.length === 0) return;
+
     fetchRangeStats();
-  }, [days, allAdhkar, selectedDate]); // Trigger re-fetech when selected date changes (to catch up)? 
-  // Actually usually we just want to update the DB stats occasionally. 
-  // But liveCounters handles the active day.
+  }, [days, groups]); // Only re-fetch if date range changes (scroll) or groups change.
+
+  // --- Optimistic Local Update ---
+  // When liveCounters change (user taps), update the local dailyStats for TODAY immediately.
+  // This creates a "cache" so if we switch days, we don't rely only on DB (which might be slow).
+  useEffect(() => {
+    if (!liveCounters) return;
+
+    // We only update the stats for the currently selected date based on live counters
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    const allAdhkar = groups.flatMap(g => g.adhkar);
+
+    if (allAdhkar.length === 0) return;
+
+    let sumPct = 0;
+    allAdhkar.forEach(d => {
+      const count = liveCounters[d.id] || 0;
+      sumPct += Math.min(count / d.target, 1);
+    });
+    const avg = sumPct / allAdhkar.length;
+
+    setDailyStats(prev => ({
+      ...prev,
+      [dateStr]: avg
+    }));
+
+  }, [liveCounters, selectedDate, groups]);
 
   // Initial scroll
   useEffect(() => {
