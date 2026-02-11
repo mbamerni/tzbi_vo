@@ -888,18 +888,34 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
     if (!session?.user) return; // Should handle anon auth too if enabled
 
     try {
-      const { error } = await supabase
+      // Check for existing record first to avoid ON CONFLICT issues
+      const { data: existing } = await supabase
         .from("daily_logs")
-        .upsert(
-          {
+        .select("id")
+        .eq("user_id", session.user.id)
+        .eq("dhikr_id", dhikrId)
+        .eq("log_date", dateStr)
+        .maybeSingle();
+
+      let error;
+
+      if (existing) {
+        const { error: updateError } = await supabase
+          .from("daily_logs")
+          .update({ count }) // Removed updated_at
+          .eq("id", existing.id);
+        error = updateError;
+      } else {
+        const { error: insertError } = await supabase
+          .from("daily_logs")
+          .insert({
             user_id: session.user.id,
             dhikr_id: dhikrId,
             log_date: dateStr,
-            count: count,
-            // updated_at: new Date().toISOString(), // Removed: Column does not exist
-          },
-          { onConflict: "user_id,dhikr_id,log_date" }
-        );
+            count: count
+          });
+        error = insertError;
+      }
 
       if (error) throw error;
 
