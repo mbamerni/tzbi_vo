@@ -1,8 +1,15 @@
-import { differenceInCalendarDays, parseISO, format, startOfDay } from 'date-fns';
+import { differenceInCalendarDays, parseISO, format, startOfDay, subMonths, eachDayOfInterval, isSameDay } from 'date-fns';
+import { ar } from 'date-fns/locale';
 
 export interface StreakResult {
     currentStreak: number;
     longestStreak: number;
+}
+
+export interface HeatmapItem {
+    date: string;
+    count: number;
+    level: 0 | 1 | 2 | 3 | 4; // Contribution level
 }
 
 export function calculateStreaks(dates: string[]): StreakResult {
@@ -62,4 +69,38 @@ export function calculateStreaks(dates: string[]): StreakResult {
     }
 
     return { currentStreak, longestStreak };
+}
+
+export function calculateDailyCompletion(todayCount: number, dailyTarget: number): number {
+    if (dailyTarget === 0) return 0;
+    return Math.min(Math.round((todayCount / dailyTarget) * 100), 100);
+}
+
+export function prepareHeatmapData(logs: any[]): HeatmapItem[] {
+    const today = new Date();
+    const threeMonthsAgo = subMonths(today, 3);
+    const dateRange = eachDayOfInterval({ start: threeMonthsAgo, end: today });
+
+    const countsByDay: Record<string, number> = {};
+    logs.forEach(log => {
+        const date = log.log_date;
+        countsByDay[date] = (countsByDay[date] || 0) + (log.count || 0);
+    });
+
+    return dateRange.map(date => {
+        const dateStr = format(date, 'yyyy-MM-dd');
+        const count = countsByDay[dateStr] || 0;
+
+        let level: 0 | 1 | 2 | 3 | 4 = 0;
+        if (count > 0) level = 1;
+        if (count >= 10) level = 2;
+        if (count >= 50) level = 3;
+        if (count >= 100) level = 4;
+
+        return {
+            date: dateStr,
+            count,
+            level
+        };
+    });
 }

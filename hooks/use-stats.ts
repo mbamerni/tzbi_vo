@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { startOfDay, subDays, format, isSameDay, differenceInCalendarDays, parseISO } from 'date-fns';
 import { ar } from 'date-fns/locale';
-import { calculateStreaks } from '@/lib/analytics';
+import { calculateStreaks, prepareHeatmapData, calculateDailyCompletion, HeatmapItem } from '@/lib/analytics';
 
 export interface DailyActivity {
     date: string;
@@ -22,9 +22,11 @@ export interface TopDhikr {
 export interface StatsData {
     totalCount: number;
     todayCount: number;
+    todayCompletion: number;
     streak: number;
     longestStreak: number;
     dailyActivity: DailyActivity[];
+    heatmapData: HeatmapItem[];
     topAdhkar: TopDhikr[];
 }
 
@@ -32,9 +34,11 @@ export function useStats() {
     const [stats, setStats] = useState<StatsData>({
         totalCount: 0,
         todayCount: 0,
+        todayCompletion: 0,
         streak: 0,
         longestStreak: 0,
         dailyActivity: [],
+        heatmapData: [],
         topAdhkar: [],
     });
     const [loading, setLoading] = useState(true);
@@ -50,8 +54,6 @@ export function useStats() {
 
             if (!userId) {
                 // If not logged in, we can't show stats yet.
-                // In a perfect world, we might wait or trigger sign-in, 
-                // but we assume useAdhkarData (top-level) handles sign-in.
                 setLoading(false);
                 return;
             }
@@ -78,12 +80,33 @@ export function useStats() {
             // Process Data
             let total = 0;
             let today = 0;
+            let todayTarget = 0; // rough estimate sum of targets for adhkar done today
             const todayStr = format(new Date(), 'yyyy-MM-dd');
 
             const countsByDay: Record<string, number> = {};
             const countsByDhikr: Record<string, { text: string; count: number; target: number; days: Set<string> }> = {};
 
             const uniqueDays = new Set<string>();
+
+            // We need a map of adhkar targets to calculate "Total Target of Today" accurately
+            // even if not performed today? 
+            // The prompt says "Completion Rate (Actual / Target)". 
+            // Usually this means "Of the adhkar I *should* do today, how many did I do?".
+            // But we don't know "what I should do" unless we fetch all active adhkar.
+            // Currently we only fetch logs.
+            // Let's rely on logs for "Active Adhkar". 
+            // Or better: Use the sum of targets of adhkar *logged today* as a baseline? 
+            // Or just fetch all adhkar? 
+            // Fetching all adhkar is cleaner to know the TRUE target.
+            // Let's fetch all active adhkar for the user to get the denominator.
+
+            const { data: allAdhkar } = await supabase
+                .from('adhkar')
+                .select('target_count')
+                .eq('user_id', userId)
+                .eq('is_active', true);
+
+            const dailyTotalTarget = allAdhkar?.reduce((sum, d) => sum + (d.target_count || 0), 0) || 1;
 
             logs.forEach((log: any) => {
                 // Filter out if adhkar is null (deleted?)
@@ -118,6 +141,12 @@ export function useStats() {
 
             // --- Streak Calculation ---
             const { currentStreak, longestStreak } = calculateStreaks(Array.from(uniqueDays));
+
+            // --- Today Completion ---
+            const todayCompletion = calculateDailyCompletion(today, dailyTotalTarget);
+
+            // --- Heatmap Data ---
+            const heatmapData = prepareHeatmapData(logs);
 
             // --- Last 7 Days ---
             const last7Days: DailyActivity[] = [];
@@ -159,14 +188,16 @@ export function useStats() {
                     };
                 })
                 .sort((a, b) => b.adherence - a.adherence) // Sort by adherence %
-                .slice(0, 5);
+                .slice(0, 3); // Top 3 as requested
 
             setStats({
                 totalCount: total,
                 todayCount: today,
+                todayCompletion,
                 streak: currentStreak,
                 longestStreak: longestStreak,
                 dailyActivity: last7Days,
+                heatmapData,
                 topAdhkar: topList
             });
 
