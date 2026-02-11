@@ -765,33 +765,51 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
   // --- Persistence Logic ---
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Cache for logs: DateStr -> { dhikrId: count }
+  // This prevents re-fetching old data if we have newer local data that isn't saved yet
+  const logsCache = useRef<Record<string, Record<string, number>>>({});
+
   // Fetch counts when date changes
   useEffect(() => {
     const fetchCounts = async () => {
-      setCountersLoaded(false); // Reset loading state on date change
-      try {
-        const dateStr = format(selectedDate, "yyyy-MM-dd");
-        // Ensure user is logged in? Assuming Supabase client handles session or public RLS.
-        const { data, error } = await supabase
-          .from("daily_logs")
-          .select("dhikr_id, count")
-          .eq("log_date", dateStr);
+      const dateStr = format(selectedDate, "yyyy-MM-dd");
 
-        if (error) throw error;
+      // 1. Check Cache First
+      if (logsCache.current[dateStr]) {
+        setCounters(logsCache.current[dateStr]);
+        setCountersLoaded(true);
+        return;
+      }
 
+      setCountersLoaded(false);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+
+      const { data, error } = await supabase
+        .from("daily_logs")
+        .select("dhikr_id, count")
+        .eq("user_id", session.user.id)
+        .eq("log_date", dateStr);
+
+      if (error) {
+        console.error("Error fetching logs:", error);
+      } else {
         const newCounters: Record<string, number> = {};
         data?.forEach((row: any) => {
           newCounters[row.dhikr_id] = row.count;
         });
+
+        // Update State
         setCounters(newCounters);
-        setCountersLoaded(true);
-      } catch (e) {
-        console.error("Error fetching counts:", e);
-        setCountersLoaded(true); // Ensure loading doesn't hang on error
+
+        // Update Cache
+        logsCache.current[dateStr] = newCounters;
       }
+      setCountersLoaded(true);
     };
+
     fetchCounts();
-  }, [selectedDate]);
+  }, [selectedDate, supabase]); // Removed unnecessary deps
 
   // --- Offline & Sync Logic ---
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -864,43 +882,27 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
   }, [supabase]);
 
   // Save to DB function with Offline Fallback
-  const saveToDb = async (dhikrId: string, count: number, date: Date) => {
-    const dateStr = format(date, "yyyy-MM-dd");
+  const saveToDb = async (dhikrId: string, count: number, dateObj: Date) => {
+    const dateStr = format(dateObj, "yyyy-MM-dd");
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return; // Should handle anon auth too if enabled
+
     try {
-      if (!navigator.onLine) {
-        throw new Error("Offline");
-      }
-
-      const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
-
-      if (!userId) return;
-
-      // Check for existing record
-      const { data: existing } = await supabase
+      const { error } = await supabase
         .from("daily_logs")
-        .select("id")
-        .eq("dhikr_id", dhikrId)
-        .eq("log_date", dateStr)
-        .single();
-
-      if (existing) {
-        const { error } = await supabase
-          .from("daily_logs")
-          .update({ count })
-          .eq("id", existing.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("daily_logs")
-          .insert({
+        .upsert(
+          {
+            user_id: session.user.id,
             dhikr_id: dhikrId,
-            count,
             log_date: dateStr,
-            user_id: userId
-          });
-        if (error) throw error;
-      }
+            count: count,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id, dhikr_id, log_date" }
+        );
+
+      if (error) throw error;
+
       // Success
       setErrorMessage(null);
 
@@ -914,6 +916,7 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
 
       // Save directly to localStorage queue
       const queueItem = { dhikrId, count, dateStr, timestamp: Date.now() };
+
       const currentQueue = JSON.parse(localStorage.getItem('offline_queue') || '[]');
 
       // Remove duplicates for same dhikr/day (keep latest count)
@@ -922,6 +925,21 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
 
       localStorage.setItem('offline_queue', JSON.stringify(filteredQueue));
     }
+  };
+
+  const updateCounter = (id: string, newVal: number) => {
+    const dateStr = format(selectedDate, "yyyy-MM-dd");
+
+    // 1. Update State
+    setCounters((prev) => {
+      const next = { ...prev, [id]: newVal };
+      // 2. Update Cache Immediately
+      logsCache.current[dateStr] = next;
+      return next;
+    });
+
+    // 3. Trigger Save (Debounced or Immediate)
+    // We handle the save call in the handler
   };
 
   const handleTap = useCallback(() => {
@@ -940,10 +958,8 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
 
     if (currentCount < activeDhikr.target) {
       const newCount = currentCount + 1;
-      setCounters((prev) => ({
-        ...prev,
-        [activeDhikr.id]: newCount,
-      }));
+
+      updateCounter(activeDhikr.id, newCount);
 
       setTapAnimation(true);
       setTimeout(() => setTapAnimation(false), 150);
@@ -975,18 +991,18 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
         }, 1200);
       }
     }
-  }, [activeDhikr, activeGroup, getCurrentCount, visibleAdhkar, activeDhikrId, selectedDate]);
+  }, [activeDhikr, activeGroup, getCurrentCount, visibleAdhkar, activeDhikrId, selectedDate, playSound]);
 
   const handleReset = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     if (!activeDhikr) return;
-    setCounters((prev) => ({ ...prev, [activeDhikr.id]: 0 }));
+    updateCounter(activeDhikr.id, 0);
     saveToDb(activeDhikr.id, 0, selectedDate);
   }, [activeDhikr, selectedDate]);
 
   const handleManualSave = (val: number) => {
     if (!activeDhikr) return;
-    setCounters(prev => ({ ...prev, [activeDhikr.id]: val }));
+    updateCounter(activeDhikr.id, val);
     saveToDb(activeDhikr.id, val, selectedDate);
   }
 
