@@ -91,38 +91,155 @@ function CircularProgress({
   );
 }
 
+// --- Mini Progress ---
+function MiniCircularProgress({
+  progress, // 0 to 1
+  size = 26,
+  strokeWidth = 2,
+  children
+}: {
+  progress: number;
+  size?: number;
+  strokeWidth?: number;
+  children?: React.ReactNode;
+}) {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const strokeDashoffset = circumference - Math.min(progress, 1) * circumference;
+
+  return (
+    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+      <svg
+        height={size}
+        width={size}
+        className="absolute inset-0 transform -rotate-90 pointer-events-none"
+      >
+        {/* Background Ring */}
+        <circle
+          stroke="hsl(var(--secondary))"
+          strokeOpacity={0.5}
+          fill="transparent"
+          strokeWidth={strokeWidth}
+          r={radius}
+          cx={size / 2}
+          cy={size / 2}
+        />
+        {/* Progress Ring */}
+        <circle
+          stroke="hsl(var(--primary))"
+          fill="transparent"
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          strokeDasharray={`${circumference} ${circumference}`}
+          style={{
+            strokeDashoffset,
+            transition: "stroke-dashoffset 0.5s ease",
+          }}
+          r={radius}
+          cx={size / 2}
+          cy={size / 2}
+        />
+      </svg>
+      {/* Content (Day Number) */}
+      <div className="relative z-10">
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function DayStrip({
   selectedDate,
   onSelectDate,
+  groups
 }: {
   selectedDate: Date;
   onSelectDate: (date: Date) => void;
+  groups: DhikrGroup[];
 }) {
-  // State for infinite scroll limits
+  const supabase = createClient();
   const [pastDays, setPastDays] = useState(14);
   const [futureDays, setFutureDays] = useState(14);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const loadingRef = useRef(false); // To prevent multiple triggers
+  const loadingRef = useRef(false);
 
-  // Generate days chronologically: [Oldest (Past) ... Today ... Newest (Future)]
-  // In RTL, Oldest will be at Rightmost (Start), Newest at Leftmost (End).
-  // This matches "9 10 11" reading Right-to-Left.
+  // Daily Stats Map: "YYYY-MM-DD" -> Completion % (0-1)
+  const [dailyStats, setDailyStats] = useState<Record<string, number>>({});
+
+  // Generate days
   const days = React.useMemo(() => {
     const arr = [];
     for (let i = -pastDays; i <= futureDays; i++) {
-      // i negative = Past (subDays). i positive = Future (addDays).
-      // Actually addDays handles negative.
+      // RTL logic note: The list renders LTR in DOM, usually styles handle RTL direction.
+      // We just supply chronological list here.
       arr.push(addDays(new Date(), i));
     }
     return arr;
   }, [pastDays, futureDays]);
 
-  // Initial scroll to Today
+  // Fetch Stats for Days Range
+  useEffect(() => {
+    const fetchRangeStats = async () => {
+      if (!days.length) return;
+
+      // Define Range
+      const start = format(days[0], 'yyyy-MM-dd');
+      const end = format(days[days.length - 1], 'yyyy-MM-dd');
+
+      // Get active targets from props (flat list)
+      const allAdhkar = groups.flatMap(g => g.adhkar);
+      if (allAdhkar.length === 0) return;
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+
+      // Fetch logs
+      const { data: logs } = await supabase
+        .from('daily_logs')
+        .select('log_date, dhikr_id, count')
+        .gte('log_date', start)
+        .lte('log_date', end)
+        .eq('user_id', session.user.id);
+
+      if (!logs) return;
+
+      // Process logs into daily scores
+      const stats: Record<string, number> = {};
+      const logsByDate: Record<string, Record<string, number>> = {};
+
+      logs.forEach((l: any) => {
+        if (!logsByDate[l.log_date]) logsByDate[l.log_date] = {};
+        logsByDate[l.log_date][l.dhikr_id] = l.count;
+      });
+
+      // Calculate score for each day in range (even empty ones?)
+      // We only care about days that have logs or are in 'days' array.
+      // Let's iterate over the fetched logs keys to be efficient, 
+      // OR iterate over all 'days' if we want 0% for empty days?
+      // UI shows 0% by default.
+
+      Object.keys(logsByDate).forEach(dateStr => {
+        const dayLogs = logsByDate[dateStr];
+        let sumPct = 0;
+        // Use current active adhkar as baseline for targets
+        // Limitation: Historical targets are not tracked, assuming current.
+        allAdhkar.forEach(d => {
+          const count = dayLogs[d.id] || 0;
+          sumPct += Math.min(count / d.target, 1);
+        });
+        const avg = sumPct / allAdhkar.length; // 0 to 1
+        stats[dateStr] = avg;
+      });
+
+      setDailyStats(prev => ({ ...prev, ...stats }));
+    };
+
+    fetchRangeStats();
+  }, [days, groups]); // Re-fetch if range grows or groups (targets) change
+
+  // Initial scroll
   useEffect(() => {
     if (scrollRef.current && !loadingRef.current) {
-      // Only center on initial mount or full reset. 
-      // But here we rely on the specific 'today' mark.
-      // We should only do this ONCE.
       const todayEl = scrollRef.current.querySelector('[data-today="true"]');
       if (todayEl) {
         todayEl.scrollIntoView({ behavior: "auto", inline: "center", block: "nearest" });
@@ -135,62 +252,20 @@ function DayStrip({
     if (!el || loadingRef.current) return;
 
     const { scrollLeft, scrollWidth, clientWidth } = el;
-    // RTL: scrollLeft is 0 at Rightmost (Start/Past). Increases negatively or positively towards Left (Future).
-    // Wait, standard RTL in Chrome: Right=0. Left=negative? Or Right=Max?
-    // Let's assume standard modern: Right edge = scrollWidth - clientWidth ??? No, that's LTR.
-    // RTL Scroll Type 'negative': Right=0, Left=-Max. 
-    // RTL Scroll Type 'default': Right=Max, Left=0? (IE/Edge legacy)
-    // RTL Scroll Type 'reverse': Right=0, Left=Max? (Chrome/Firefox standard now usually?)
-
-    // We need to be robust. 
-    // Safest: check distance from start/end.
-
-    const scrollX = Math.abs(scrollLeft); // normalize
+    const scrollX = Math.abs(scrollLeft);
     const maxScroll = scrollWidth - clientWidth;
 
-    // Check "End" (Future/Left side)
-    // If we scroll towards Left, we approach Future.
-    // In 'reverse' type (Chrome): scrollLeft increases positive to Left.
-    // So near maxScroll = Future.
     if (Math.abs(scrollX - maxScroll) < 50) {
       loadingRef.current = true;
-      // Load Future
       setFutureDays(prev => prev + 15);
       setTimeout(() => { loadingRef.current = false; }, 300);
     }
 
-    // Check "Start" (Past/Right side)
-    // In 'reverse' type: scrollLeft is near 0.
     if (scrollX < 50) {
       loadingRef.current = true;
-      const oldScrollWidth = scrollWidth;
       setPastDays(prev => {
         const newVal = prev + 15;
-        // Adjust scroll after render
-        setTimeout(() => {
-          if (el) {
-            const newScrollWidth = el.scrollWidth;
-            const diff = newScrollWidth - oldScrollWidth;
-            // If we moved 0->diff, we must shift scroll to maintain relative view
-            // But strictly speaking, if we were at 0, and we added width, we want to stay at 'diff' (new 0 position is further right).
-            // Actually, since we prepend items at the Right (Start)?
-            // Wait, in RTL, First Item (Index 0) is Rightmost.
-            // If I prepend Oldest items (Index -15...-1), they become new Index 0.
-            // They appear at the Rightmost edge.
-            // The previous content shifts Left.
-            // The user's viewport stays at 0 (Right edge). So they see new items immediately appearing?
-            // Or does content push?
-            // In RTL, typically content grows to the Left?
-            // If flexible width, items might shift.
-            // Let's assume standard behavior: we prepend, new items appear at Right. 
-            // We need to scroll Left (increase scrollLeft) by 'diff' to keep old content in view.
-            //el.scrollLeft += diff; // Chrome 'reverse' type
-            // Actually, let's just create a LayoutEffect or similar logic if needed. Or just let it pop if user is scrolling fast.
-            // User said "scroll triggers load". 
-            // If I'm at 0, and I load more..
-          }
-          loadingRef.current = false;
-        }, 0);
+        setTimeout(() => { loadingRef.current = false; }, 0);
         return newVal;
       });
     }
@@ -200,34 +275,36 @@ function DayStrip({
     <div
       ref={scrollRef}
       onScroll={handleScroll}
-      className="flex gap-5 overflow-x-auto px-4 py-2 scrollbar-hide snap-x relative"
+      className="flex gap-4 overflow-x-auto px-4 py-2 scrollbar-hide snap-x relative items-center"
     >
       {days.map((date) => {
+        const dateStr = format(date, 'yyyy-MM-dd');
         const isSelected = isSameDay(date, selectedDate);
         const isToday = isSameDay(date, new Date());
+        const progress = dailyStats[dateStr] || 0;
+
         return (
           <button
             key={date.toISOString()}
             data-today={isToday ? "true" : undefined}
             onClick={() => onSelectDate(date)}
-            className={`flex flex-col items-center justify-center min-w-[36px] h-[68px] rounded-[24px] snap-center transition-all ${isSelected
-              ? "bg-background neu-flat" // Active: Flat Outset Container
-              : "bg-transparent" // Inactive: Transparent Container
+            className={`flex flex-col items-center justify-center min-w-[36px] h-[68px] rounded-[24px] snap-center transition-all duration-300 ${isSelected
+              ? "bg-background neu-flat scale-110" // Active: Flat + Highlight
+              : "bg-transparent opacity-70 hover:opacity-100" // Inactive
               }`}
           >
             {/* Top Text (Day Name) */}
-            <span className={`text-[11px] font-medium mb-2 font-['SF_Pro'] tracking-tight ${isSelected ? "text-primary" : "text-[#6f6f6f]"}`}>
+            <span className={`text-[10px] font-medium mb-1.5 font-['SF_Pro'] tracking-tight ${isSelected ? "text-primary font-bold" : "text-[#6f6f6f]"}`}>
               {format(date, "EEE", { locale: ar })}
             </span>
 
-            {/* Circle (Day Number) */}
-            <div className={`w-[26px] h-[26px] rounded-full flex items-center justify-center neu-pressed ${isSelected ? "border-[1.5px] border-primary" : ""}`}>
-              <span className="text-[11px] font-medium text-[#6f6f6f] font-['SF_Pro'] tracking-tight">
+            {/* Circle with Progress */}
+            <MiniCircularProgress progress={progress} size={30} strokeWidth={2.5}>
+              <span className={`text-[11px] font-medium font-['SF_Pro'] tracking-tight ${isSelected ? "text-primary" : "text-[#6f6f6f]"}`}>
                 {format(date, "d")}
               </span>
-            </div>
+            </MiniCircularProgress>
 
-            {/* We can remove the 'isToday' dot or keep it subtle if desired, but Figma didn't show it explicitly in the snippet */}
           </button>
         );
       })}
@@ -935,7 +1012,7 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
     <div className="flex flex-col h-full bg-background">
       {/* 1. Day Strip */}
       <div className="pt-2 pb-0">
-        <DayStrip selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+        <DayStrip selectedDate={selectedDate} onSelectDate={setSelectedDate} groups={groups} />
       </div>
 
       {/* 2. Group Filter Slider */}
