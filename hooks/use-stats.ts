@@ -6,17 +6,15 @@ import { calculateStreaks, prepareHeatmapData, calculateDailyCompletion, Heatmap
 
 export interface DailyActivity {
     date: string;
-    count: number;
-    dayName: string; // for chart x-axis
+    score: number; // 0-100%
+    dayName: string;
 }
 
 export interface TopDhikr {
     id: string;
     text: string;
-    count: number;
-    target: number;
+    avgCompletion: number; // Average daily completion %
     daysActive: number;
-    adherence: number;
 }
 
 export interface StatsData {
@@ -30,14 +28,16 @@ export interface StatsData {
     topAdhkar: TopDhikr[];
 }
 
-export function useStats() {
+export type DateRange = 'week' | 'month' | '3months';
+
+export function useStats(range: DateRange = 'week') {
     const [stats, setStats] = useState<StatsData>({
         totalCount: 0,
         todayCount: 0,
         todayCompletion: 0,
         streak: 0,
         longestStreak: 0,
-        dailyActivity: [],
+        dailyActivity: [], // Now stores percentage scores
         heatmapData: [],
         topAdhkar: [],
     });
@@ -48,155 +48,204 @@ export function useStats() {
         try {
             setLoading(true);
 
-            // Get current user (session should be established by useAdhkarData or root layout)
             const { data: { session } } = await supabase.auth.getSession();
             const userId = session?.user?.id;
 
             if (!userId) {
-                // If not logged in, we can't show stats yet.
                 setLoading(false);
                 return;
             }
 
-            const { data: logs, error } = await supabase
+            // 1. Fetch Active Adhkar (to know targets)
+            // We need this to calculate "Unweighted Average Completion"
+            const { data: allAdhkar } = await supabase
+                .from('adhkar')
+                .select('id, text, target_count')
+                .eq('user_id', userId)
+                .eq('is_active', true);
+
+            const activeAdhkarMap = new Map<string, { text: string, target: number }>();
+            allAdhkar?.forEach(a => activeAdhkarMap.set(a.id, { text: a.text, target: a.target_count || 1 }));
+            const totalActiveAdhkarCount = activeAdhkarMap.size || 1;
+
+            // 2. Fetch Logs (Filtered by user!)
+            // We might need a date filter for efficiency, but for streaks/heatmap we need history.
+            // Let's fetch last 3 months for charts/heatmap, and ALL for streaks?
+            // "Streaks" usually implies looking back until a break. 
+            // "Lifetime Total" needs all. 
+            // supabase.rpc for total count? 
+            // For now, let's just fetch all logs. If it gets slow, we optimize.
+
+            let query = supabase
                 .from('daily_logs')
                 .select(`
                     count,
                     log_date,
-                    dhikr_id,
-                    adhkar (
-                        text,
-                        target_count
-                    )
-                `);
+                    dhikr_id
+                `)
+                .eq('user_id', userId); // SECURITY FIX: Filter by user_id
+
+            const { data: logs, error } = await query;
 
             if (error) throw error;
-
             if (!logs) {
                 setLoading(false);
                 return;
             }
 
-            // Process Data
+            // --- Process Data ---
             let total = 0;
-            let today = 0;
-            let todayTarget = 0; // rough estimate sum of targets for adhkar done today
+            let todayCount = 0;
             const todayStr = format(new Date(), 'yyyy-MM-dd');
-
-            const countsByDay: Record<string, number> = {};
-            const countsByDhikr: Record<string, { text: string; count: number; target: number; days: Set<string> }> = {};
-
             const uniqueDays = new Set<string>();
 
-            // We need a map of adhkar targets to calculate "Total Target of Today" accurately
-            // even if not performed today? 
-            // The prompt says "Completion Rate (Actual / Target)". 
-            // Usually this means "Of the adhkar I *should* do today, how many did I do?".
-            // But we don't know "what I should do" unless we fetch all active adhkar.
-            // Currently we only fetch logs.
-            // Let's rely on logs for "Active Adhkar". 
-            // Or better: Use the sum of targets of adhkar *logged today* as a baseline? 
-            // Or just fetch all adhkar? 
-            // Fetching all adhkar is cleaner to know the TRUE target.
-            // Let's fetch all active adhkar for the user to get the denominator.
-
-            const { data: allAdhkar } = await supabase
-                .from('adhkar')
-                .select('target_count')
-                .eq('user_id', userId)
-                .eq('is_active', true);
-
-            const dailyTotalTarget = allAdhkar?.reduce((sum, d) => sum + (d.target_count || 0), 0) || 1;
+            // Map: Date -> { dhikrId: count }
+            const logsByDay: Record<string, Record<string, number>> = {};
 
             logs.forEach((log: any) => {
-                // Filter out if adhkar is null (deleted?)
-                if (!log.adhkar) return;
-
                 const count = log.count || 0;
-                const date = log.log_date; // "YYYY-MM-DD"
+                const date = log.log_date;
+                const dhikrId = log.dhikr_id;
 
                 total += count;
-
-                if (date === todayStr) {
-                    today += count;
-                }
-
-                // Daily Activity
-                countsByDay[date] = (countsByDay[date] || 0) + count;
                 uniqueDays.add(date);
 
-                // Top Adhkar (Adherence Calculation)
-                const dhikrId = log.dhikr_id;
-                if (!countsByDhikr[dhikrId]) {
-                    countsByDhikr[dhikrId] = {
-                        text: log.adhkar.text,
-                        count: 0,
-                        target: log.adhkar.target_count || 1,
-                        days: new Set()
-                    };
+                if (date === todayStr) {
+                    todayCount += count;
                 }
-                countsByDhikr[dhikrId].count += count;
-                countsByDhikr[dhikrId].days.add(date);
+
+                if (!logsByDay[date]) logsByDay[date] = {};
+                logsByDay[date][dhikrId] = (logsByDay[date][dhikrId] || 0) + count;
             });
 
-            // --- Streak Calculation ---
+            // 3. Calculate Daily Percentage Scores (Unweighted)
+            // For each day, Score = Sum(min(count/target, 1)) / NumActiveAdhkar * 100
+            const getDailyScore = (dateLogs: Record<string, number>) => {
+                let sumPercentages = 0;
+                // We iterate over ACTIVE adhkar to see what was done vs target
+                // If a dhikr was logged but is no longer active, should we count it? 
+                // Usually yes, but for "current progress" maybe no?
+                // Let's stick to "Current Active Adhkar" as the standard.
+                // If I did a deleted dhikr, it doesn't count towards my "Current Goal".
+
+                activeAdhkarMap.forEach((meta, id) => {
+                    const count = dateLogs[id] || 0;
+                    const completion = Math.min(count / meta.target, 1);
+                    sumPercentages += completion;
+                });
+
+                return Math.round((sumPercentages / totalActiveAdhkarCount) * 100);
+            };
+
+            const todayCompletion = getDailyScore(logsByDay[todayStr] || {});
+
+            // 4. Streaks
             const { currentStreak, longestStreak } = calculateStreaks(Array.from(uniqueDays));
 
-            // --- Today Completion ---
-            const todayCompletion = calculateDailyCompletion(today, dailyTotalTarget);
-
-            // --- Heatmap Data ---
+            // 5. Heatmap (Last 3 Months)
             const heatmapData = prepareHeatmapData(logs);
+            // Note: Heatmap usually shows "Intensity" (Count) or "Completion"?
+            // GitHub shows "Contribution Count".
+            // User asked for "Darker = More Adhkar". "عدد الأذكار".
+            // So Heatmap stays based on Count (prepareHeatmapData default).
 
-            // --- Last 7 Days ---
-            const last7Days: DailyActivity[] = [];
-            for (let i = 6; i >= 0; i--) {
+            // 6. Chart Data (Based on Range Filter)
+            const chartDays: DailyActivity[] = [];
+            let daysToLookBack = 7;
+            if (range === 'month') daysToLookBack = 30;
+            if (range === '3months') daysToLookBack = 90;
+
+            for (let i = daysToLookBack - 1; i >= 0; i--) {
                 const d = subDays(new Date(), i);
                 const dStr = format(d, 'yyyy-MM-dd');
-                const dayName = format(d, 'EEEE');
+                const dayName = format(d, 'EEEE'); // or short date
                 const arDays: Record<string, string> = {
                     'Sunday': 'أحد', 'Monday': 'إثنين', 'Tuesday': 'ثلاثاء',
                     'Wednesday': 'أربعاء', 'Thursday': 'خميس', 'Friday': 'جمعة', 'Saturday': 'سبت'
                 };
-                last7Days.push({
+
+                // Chart Y-Axis: Percentage Score
+                const score = getDailyScore(logsByDay[dStr] || {});
+
+                chartDays.push({
                     date: dStr,
-                    count: countsByDay[dStr] || 0,
-                    dayName: arDays[dayName] || dayName
+                    score: score,
+                    dayName: range === 'week' ? (arDays[dayName] || dayName) : format(d, 'M/d')
                 });
             }
 
-            // --- Top Adhkar (Adherence) ---
-            const topList = Object.entries(countsByDhikr)
-                .map(([id, val]) => {
-                    const daysActive = val.days.size;
-                    // Total Target = Target * Days Active
-                    const totalTarget = val.target * daysActive;
+            // 7. Top Adhkar (Most Committed)
+            // "Calculates the dhikr I am most committed to, not just count"
+            // Logic: Average Daily Completion % for days it was active?
+            // Or simple: Sum of (Daily %) / Total Days in Range?
+            // Let's do "All Time" for "Top Adhkar".
 
-                    // Adherence = (Total Count / Total Target) * 100
-                    let adherence = 0;
-                    if (totalTarget > 0) {
-                        adherence = (val.count / totalTarget) * 100;
+            const dhikrScores: Record<string, { sumPct: number, daysWithLog: number }> = {};
+
+            // Iterate all days that have logs
+            Object.entries(logsByDay).forEach(([date, dayLogs]) => {
+                Object.entries(dayLogs).forEach(([id, count]) => {
+                    if (activeAdhkarMap.has(id)) {
+                        const target = activeAdhkarMap.get(id)!.target;
+                        const pct = Math.min(count / target, 1);
+
+                        if (!dhikrScores[id]) dhikrScores[id] = { sumPct: 0, daysWithLog: 0 };
+                        dhikrScores[id].sumPct += pct;
+                        dhikrScores[id].daysWithLog += 1; // Count days where at least 1 was done?
+                        // Or should we divide by "Total Days since created"? Too complex.
+                        // Let's divide by "Days where it was logged" implies consistency when active?
+                        // User says "Most Committed".
+                        // If I did it 100 times (100 days) at 100%, I am very committed.
+                        // If I did it 1 time (1 day) at 100%, I am 100% committed?
+                        // We need to weight by frequency.
+                        // Let's just sum the "Completion Percentages".
+                        // Score = Sum(DailyCompletion). 
+                        // High score = Many days of high completion.
                     }
+                });
+            });
+
+            const topList = Array.from(activeAdhkarMap.entries())
+                .map(([id, meta]) => {
+                    const stats = dhikrScores[id] || { sumPct: 0, daysWithLog: 0 };
+                    // We can normalize this score to look like a percentage if needed, 
+                    // but "Most Committed" is best ranked by "Sum of Daily Completions".
+                    // But to display a "Percentage" in the UI (as requested 85%), we need an average.
+                    // Let's show Average Completion on days it was done? 
+                    // Or Average Comletion over last 30 days?
+
+                    // User Example: "Final Percentage 85%".
+                    // Let's just return the raw stats and decide UI.
+                    // Actually UI shows "85%". 
+                    // Let's calculate: (Total Count / Total Target across all time) * 100?
+                    // No, that was the old logic (skewed by over-performance).
+                    // New logic: Average of Daily Completions.
+
+                    const avg = stats.daysWithLog > 0 ? (stats.sumPct / stats.daysWithLog) * 100 : 0;
 
                     return {
                         id,
-                        text: val.text,
-                        count: val.count,
-                        target: val.target,
-                        daysActive,
-                        adherence
+                        text: meta.text,
+                        avgCompletion: avg,
+                        daysActive: stats.daysWithLog
                     };
                 })
-                .sort((a, b) => b.adherence - a.adherence) // Sort by adherence %
-                .slice(0, 3); // Top 3 as requested
+                .sort((a, b) => {
+                    // Sort by "Total Commitment" (Sum Pct) -> daysActive * avgCompletion
+                    const scoreA = a.daysActive * a.avgCompletion;
+                    const scoreB = b.daysActive * b.avgCompletion;
+                    return scoreB - scoreA;
+                })
+                .slice(0, 3);
+
 
             setStats({
                 totalCount: total,
-                todayCount: today,
+                todayCount: todayCount,
                 todayCompletion,
                 streak: currentStreak,
                 longestStreak: longestStreak,
-                dailyActivity: last7Days,
+                dailyActivity: chartDays,
                 heatmapData,
                 topAdhkar: topList
             });
@@ -206,7 +255,7 @@ export function useStats() {
         } finally {
             setLoading(false);
         }
-    }, [supabase]);
+    }, [supabase, range]); // Re-fetch when range changes
 
     useEffect(() => {
         fetchStats();

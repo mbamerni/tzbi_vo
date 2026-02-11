@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useMemo } from "react";
-import { useStats } from "@/hooks/use-stats";
+import React, { useState, useMemo } from "react";
+import { useStats, DateRange } from "@/hooks/use-stats";
 import { Loader2, Flame, Trophy, Calendar, Hash, Activity, Target } from "lucide-react";
 import {
   AreaChart,
@@ -9,13 +9,15 @@ import {
   XAxis,
   Tooltip,
   ResponsiveContainer,
-  CartesianGrid
+  CartesianGrid,
+  YAxis
 } from "recharts";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
 
 export default function AnalyticsScreen() {
-  const { stats, loading } = useStats();
+  const [dateRange, setDateRange] = useState<DateRange>("week");
+  const { stats, loading } = useStats(dateRange);
 
   // Memoize chart data to prevent re-renders unless stats change
   const chartData = useMemo(() => {
@@ -56,6 +58,28 @@ export default function AnalyticsScreen() {
 
       <div className="flex-1 px-6 pb-24 space-y-6">
 
+        {/* Date Filters */}
+        <div className="flex bg-secondary p-1 rounded-xl">
+          <button
+            onClick={() => setDateRange("week")}
+            className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${dateRange === 'week' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground'}`}
+          >
+            أسبوع
+          </button>
+          <button
+            onClick={() => setDateRange("month")}
+            className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${dateRange === 'month' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground'}`}
+          >
+            شهر
+          </button>
+          <button
+            onClick={() => setDateRange("3months")}
+            className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${dateRange === '3months' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground'}`}
+          >
+            3 أشهر
+          </button>
+        </div>
+
         {/* Overview Headers (3 Cards) */}
         <div className="grid grid-cols-3 gap-3">
           {/* Total Tasbeehs */}
@@ -88,15 +112,17 @@ export default function AnalyticsScreen() {
 
         {/* Activity Chart (Area Chart) */}
         <div className="bg-card rounded-2xl p-5 border border-border shadow-sm">
-          <div className="flex items-center gap-2 mb-6">
-            <Activity className="text-primary" size={20} />
-            <h3 className="font-semibold">النشاط الأسبوعي</h3>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <Activity className="text-primary" size={20} />
+              <h3 className="font-semibold">نسبة الإنجاز اليومي</h3>
+            </div>
           </div>
           <div className="h-[200px] w-full" dir="ltr">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
                 <defs>
-                  <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
                     <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                   </linearGradient>
@@ -108,6 +134,14 @@ export default function AnalyticsScreen() {
                   axisLine={false}
                   tickLine={false}
                   dy={10}
+                  interval={dateRange === 'week' ? 0 : 'preserveStartEnd'}
+                />
+                <YAxis
+                  unit="%"
+                  tick={{ fontSize: 10, fill: '#888' }}
+                  axisLine={false}
+                  tickLine={false}
+                  domain={[0, 100]}
                 />
                 <Tooltip
                   cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1 }}
@@ -116,7 +150,7 @@ export default function AnalyticsScreen() {
                       return (
                         <div className="bg-popover text-popover-foreground text-xs p-2 rounded-lg border shadow-sm text-right">
                           <p className="font-semibold mb-1">{label}</p>
-                          <p>العدد: {payload[0].value}</p>
+                          <p>الإنجاز: {payload[0].value}%</p>
                         </div>
                       )
                     }
@@ -125,11 +159,11 @@ export default function AnalyticsScreen() {
                 />
                 <Area
                   type="monotone"
-                  dataKey="count"
+                  dataKey="score"
                   stroke="hsl(var(--primary))"
                   strokeWidth={3}
                   fillOpacity={1}
-                  fill="url(#colorCount)"
+                  fill="url(#colorScore)"
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -158,7 +192,7 @@ export default function AnalyticsScreen() {
                 <div
                   key={item.date}
                   className={`h-3 w-3 rounded-sm ${getLevelColor(item.level)}`}
-                  title={`${item.date}: ${item.count}`}
+                  title={`${item.date}: ${item.count} loops`}
                 />
               ))}
             </div>
@@ -176,7 +210,7 @@ export default function AnalyticsScreen() {
         <div className="bg-card rounded-2xl p-5 border border-border shadow-sm">
           <div className="flex items-center gap-2 mb-4">
             <Trophy className="text-yellow-500" size={20} />
-            <h3 className="font-semibold">الأكثر إنجازاً</h3>
+            <h3 className="font-semibold">الأكثر التزاماً</h3>
           </div>
           <div className="space-y-4">
             {stats.topAdhkar.length > 0 ? (
@@ -194,12 +228,12 @@ export default function AnalyticsScreen() {
                       </span>
                       <span className="font-medium text-foreground">{item.text}</span>
                     </div>
-                    <span className="font-mono font-bold text-primary">{Math.round(item.adherence)}%</span>
+                    <span className="font-mono font-bold text-primary">{Math.round(item.avgCompletion)}%</span>
                   </div>
                   <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
                     <div
                       className="bg-primary h-full rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(item.adherence, 100)}%` }}
+                      style={{ width: `${Math.min(item.avgCompletion, 100)}%` }}
                     />
                   </div>
                 </div>
