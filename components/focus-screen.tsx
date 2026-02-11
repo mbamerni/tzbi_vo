@@ -898,7 +898,7 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
             count: count,
             updated_at: new Date().toISOString(),
           },
-          { onConflict: "user_id, dhikr_id, log_date" }
+          { onConflict: "user_id,dhikr_id,log_date" }
         );
 
       if (error) throw error;
@@ -910,7 +910,7 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
       if (e.message === "Offline" || e.message === "Failed to fetch") {
         console.warn("Saving locally (Offline mode)");
       } else {
-        console.error("Error saving progress (saving locally):", e);
+        console.error("Error saving progress (saving locally):", JSON.stringify(e, null, 2) || e);
       }
       setErrorMessage("تعذر الاتصال. سيتم الحفظ تلقائياً عند عودة الإنترنت.");
 
