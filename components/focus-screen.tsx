@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import type { DhikrGroup, Dhikr } from "@/lib/athkari-data";
 import { createClient } from "@/lib/supabase/client";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Moon,
   Sun,
@@ -426,7 +427,15 @@ function DhikrCardsSlider({
               {/* Count */}
               <div className="flex items-center justify-end gap-1 leading-none mt-[-2px]">
                 <span className="text-[9px] font-medium text-[#8E8E93] tracking-tight">{dhikr.target} / </span>
-                <span className="text-[14px] font-medium text-[#84994f] tracking-tight">{current}</span>
+                <motion.span
+                  key={current}
+                  initial={{ scale: 1.2, color: "hsl(var(--primary))" }}
+                  animate={{ scale: 1, color: "#84994f" }}
+                  transition={{ duration: 0.2 }}
+                  className="text-[14px] font-medium text-[#84994f] tracking-tight"
+                >
+                  {current}
+                </motion.span>
               </div>
             </div>
 
@@ -670,14 +679,88 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
     fetchCounts();
   }, [selectedDate]);
 
-  // Save to DB function
+  // --- Offline & Sync Logic ---
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Sync effect
+  useEffect(() => {
+    const syncOfflineData = async () => {
+      if (typeof window === 'undefined') return;
+
+      const offlineQueue = JSON.parse(localStorage.getItem('offline_queue') || '[]');
+      if (offlineQueue.length === 0) return;
+
+      console.log('Syncing offline data...', offlineQueue.length);
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) return;
+
+      const newQueue = [...offlineQueue];
+
+      // Process queue
+      // We process sequentially to ensure order, or just iterate.
+      // Since we just update counts, we can just send the latest.
+      // But to be safe, let's try to send all.
+      for (let i = 0; i < newQueue.length; i++) {
+        const item = newQueue[i];
+        try {
+          // Check existing
+          const { data: existing } = await supabase
+            .from("daily_logs")
+            .select("id")
+            .eq("dhikr_id", item.dhikrId)
+            .eq("log_date", item.dateStr)
+            .single();
+
+          if (existing) {
+            await supabase.from("daily_logs").update({ count: item.count }).eq("id", existing.id);
+          } else {
+            await supabase.from("daily_logs").insert({
+              dhikr_id: item.dhikrId,
+              count: item.count,
+              log_date: item.dateStr,
+              user_id: userId
+            });
+          }
+          // Remove from queue if successful (mark for removal)
+          newQueue[i] = null;
+        } catch (e) {
+          console.error("Sync failed for item", item, e);
+        }
+      }
+
+      // Clean queue
+      const remaining = newQueue.filter(x => x !== null);
+      localStorage.setItem('offline_queue', JSON.stringify(remaining));
+
+      if (remaining.length === 0) {
+        setErrorMessage(null); // Clear error if all synced
+      }
+    };
+
+    // Listen for online
+    window.addEventListener('online', syncOfflineData);
+
+    // Initial check
+    if (navigator.onLine) {
+      syncOfflineData();
+    }
+
+    return () => window.removeEventListener('online', syncOfflineData);
+  }, [supabase]);
+
+  // Save to DB function with Offline Fallback
   const saveToDb = async (dhikrId: string, count: number, date: Date) => {
+    const dateStr = format(date, "yyyy-MM-dd");
     try {
-      const dateStr = format(date, "yyyy-MM-dd");
+      if (!navigator.onLine) {
+        throw new Error("Offline");
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id;
 
-      if (!userId) return; // Should likely handle error or queue
+      if (!userId) return;
 
       // Check for existing record
       const { data: existing } = await supabase
@@ -686,18 +769,15 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
         .eq("dhikr_id", dhikrId)
         .eq("log_date", dateStr)
         .single();
-      // RLS will now filter by user_id automatically if we added the policy, 
-      // but explicit .eq('user_id', userId) is safe practices too, 
-      // though strictly RLS handles `USING (user_id = auth.uid())`.
-      // The issue is INSERT.
 
       if (existing) {
-        await supabase
+        const { error } = await supabase
           .from("daily_logs")
           .update({ count })
           .eq("id", existing.id);
+        if (error) throw error;
       } else {
-        await supabase
+        const { error } = await supabase
           .from("daily_logs")
           .insert({
             dhikr_id: dhikrId,
@@ -705,9 +785,24 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
             log_date: dateStr,
             user_id: userId
           });
+        if (error) throw error;
       }
+      // Success
+      setErrorMessage(null);
+
     } catch (e) {
-      console.error("Error saving progress:", e);
+      console.error("Error saving progress (saving locally):", e);
+      setErrorMessage("تعذر الاتصال. سيتم الحفظ تلقائياً عند عودة الإنترنت.");
+
+      // Save directly to localStorage queue
+      const queueItem = { dhikrId, count, dateStr, timestamp: Date.now() };
+      const currentQueue = JSON.parse(localStorage.getItem('offline_queue') || '[]');
+
+      // Remove duplicates for same dhikr/day (keep latest count)
+      const filteredQueue = currentQueue.filter((x: any) => !(x.dhikrId === dhikrId && x.dateStr === dateStr));
+      filteredQueue.push(queueItem);
+
+      localStorage.setItem('offline_queue', JSON.stringify(filteredQueue));
     }
   };
 

@@ -1,4 +1,4 @@
-import { differenceInCalendarDays, parseISO, format } from 'date-fns';
+import { differenceInCalendarDays, parseISO, format, startOfDay } from 'date-fns';
 
 export interface StreakResult {
     currentStreak: number;
@@ -13,11 +13,17 @@ export function calculateStreaks(dates: string[]): StreakResult {
 
     // 1. Calculate Current Streak
     let currentStreak = 0;
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
-    const lastActive = uniqueDates[0]; // Newest date
+
+    // Use local time for "today"
+    const today = startOfDay(new Date());
+    // The input 'dates' are YYYY-MM-DD strings. 
+    // We treat them as local calendar dates.
+    const lastActiveStr = uniqueDates[0];
+    const lastActive = parseISO(lastActiveStr); // parseISO("2023-01-01") -> Local midnight
 
     // Check if streak is alive (active today or yesterday)
-    const diffToLast = differenceInCalendarDays(parseISO(todayStr), parseISO(lastActive));
+    // differenceInCalendarDays returns integer difference in days
+    const diffToLast = differenceInCalendarDays(today, lastActive);
 
     if (diffToLast <= 1) {
         currentStreak = 1;
@@ -37,10 +43,8 @@ export function calculateStreaks(dates: string[]): StreakResult {
     let longestStreak = 0;
     let tempStreak = 1;
 
-    // Scan through all dates to find max consecutive sequence
-    // We can just iterate linearly
     if (uniqueDates.length > 0) {
-        longestStreak = 1; // At least 1 day if we have dates
+        longestStreak = 1;
         for (let i = 0; i < uniqueDates.length - 1; i++) {
             const curr = parseISO(uniqueDates[i]);
             const prev = parseISO(uniqueDates[i + 1]);
@@ -49,7 +53,6 @@ export function calculateStreaks(dates: string[]): StreakResult {
             if (diff === 1) {
                 tempStreak++;
             } else {
-                // Streak broken
                 tempStreak = 1;
             }
             if (tempStreak > longestStreak) {

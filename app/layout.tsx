@@ -13,6 +13,11 @@ const _amiri = Amiri({
 export const metadata: Metadata = {
   title: "tzbi_v0",
   description: "tzbi_v0 - Your Digital Tasbeeh",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "أذكاري",
+  },
 };
 
 export const viewport: Viewport = {
@@ -21,6 +26,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  // iOS specific
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
