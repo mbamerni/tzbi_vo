@@ -108,7 +108,7 @@ function MiniCircularProgress({
   const strokeDashoffset = circumference - Math.min(progress, 1) * circumference;
 
   return (
-    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+    <div className="relative flex items-center justify-center flex-shrink-0" style={{ width: size, height: size }}>
       <svg
         height={size}
         width={size}
@@ -117,7 +117,7 @@ function MiniCircularProgress({
         {/* Background Ring */}
         <circle
           stroke="hsl(var(--secondary))"
-          strokeOpacity={0.5}
+          strokeOpacity={0.8}
           fill="transparent"
           strokeWidth={strokeWidth}
           r={radius}
@@ -140,8 +140,8 @@ function MiniCircularProgress({
           cy={size / 2}
         />
       </svg>
-      {/* Content (Day Number) */}
-      <div className="relative z-10">
+      {/* Content (Day Number) - Centered */}
+      <div className="relative z-10 flex items-center justify-center w-full h-full">
         {children}
       </div>
     </div>
@@ -151,11 +151,13 @@ function MiniCircularProgress({
 function DayStrip({
   selectedDate,
   onSelectDate,
-  groups
+  groups,
+  liveCounters // New Prop
 }: {
   selectedDate: Date;
   onSelectDate: (date: Date) => void;
   groups: DhikrGroup[];
+  liveCounters?: Record<string, number>;
 }) {
   const supabase = createClient();
   const [pastDays, setPastDays] = useState(14);
@@ -177,6 +179,9 @@ function DayStrip({
     return arr;
   }, [pastDays, futureDays]);
 
+  // Active targets helper
+  const allAdhkar = React.useMemo(() => groups.flatMap(g => g.adhkar), [groups]);
+
   // Fetch Stats for Days Range
   useEffect(() => {
     const fetchRangeStats = async () => {
@@ -186,8 +191,6 @@ function DayStrip({
       const start = format(days[0], 'yyyy-MM-dd');
       const end = format(days[days.length - 1], 'yyyy-MM-dd');
 
-      // Get active targets from props (flat list)
-      const allAdhkar = groups.flatMap(g => g.adhkar);
       if (allAdhkar.length === 0) return;
 
       const { data: { session } } = await supabase.auth.getSession();
@@ -212,17 +215,9 @@ function DayStrip({
         logsByDate[l.log_date][l.dhikr_id] = l.count;
       });
 
-      // Calculate score for each day in range (even empty ones?)
-      // We only care about days that have logs or are in 'days' array.
-      // Let's iterate over the fetched logs keys to be efficient, 
-      // OR iterate over all 'days' if we want 0% for empty days?
-      // UI shows 0% by default.
-
       Object.keys(logsByDate).forEach(dateStr => {
         const dayLogs = logsByDate[dateStr];
         let sumPct = 0;
-        // Use current active adhkar as baseline for targets
-        // Limitation: Historical targets are not tracked, assuming current.
         allAdhkar.forEach(d => {
           const count = dayLogs[d.id] || 0;
           sumPct += Math.min(count / d.target, 1);
@@ -235,7 +230,9 @@ function DayStrip({
     };
 
     fetchRangeStats();
-  }, [days, groups]); // Re-fetch if range grows or groups (targets) change
+  }, [days, allAdhkar, selectedDate]); // Trigger re-fetech when selected date changes (to catch up)? 
+  // Actually usually we just want to update the DB stats occasionally. 
+  // But liveCounters handles the active day.
 
   // Initial scroll
   useEffect(() => {
@@ -281,7 +278,18 @@ function DayStrip({
         const dateStr = format(date, 'yyyy-MM-dd');
         const isSelected = isSameDay(date, selectedDate);
         const isToday = isSameDay(date, new Date());
-        const progress = dailyStats[dateStr] || 0;
+
+        let progress = dailyStats[dateStr] || 0;
+
+        // If this is the currently selected date, try to use live counters if available
+        if (isSelected && liveCounters && allAdhkar.length > 0) {
+          let sumPct = 0;
+          allAdhkar.forEach(d => {
+            const count = liveCounters[d.id] || 0;
+            sumPct += Math.min(count / d.target, 1);
+          });
+          progress = sumPct / allAdhkar.length;
+        }
 
         return (
           <button
@@ -289,18 +297,18 @@ function DayStrip({
             data-today={isToday ? "true" : undefined}
             onClick={() => onSelectDate(date)}
             className={`flex flex-col items-center justify-center min-w-[36px] h-[68px] rounded-[24px] snap-center transition-all duration-300 ${isSelected
-              ? "bg-background neu-flat scale-110" // Active: Flat + Highlight
-              : "bg-transparent opacity-70 hover:opacity-100" // Inactive
+              ? "bg-background neu-flat" // Active
+              : "bg-transparent opacity-70" // Inactive
               }`}
           >
             {/* Top Text (Day Name) */}
-            <span className={`text-[10px] font-medium mb-1.5 font-['SF_Pro'] tracking-tight ${isSelected ? "text-primary font-bold" : "text-[#6f6f6f]"}`}>
+            <span className={`text-[10px] font-medium mb-2 font-['SF_Pro'] tracking-tight ${isSelected ? "text-primary font-bold" : "text-[#6f6f6f]"}`}>
               {format(date, "EEE", { locale: ar })}
             </span>
 
             {/* Circle with Progress */}
-            <MiniCircularProgress progress={progress} size={30} strokeWidth={2.5}>
-              <span className={`text-[11px] font-medium font-['SF_Pro'] tracking-tight ${isSelected ? "text-primary" : "text-[#6f6f6f]"}`}>
+            <MiniCircularProgress progress={progress} size={26} strokeWidth={2}>
+              <span className={`text-[11px] font-medium font-['SF_Pro'] tracking-tight leading-none pt-[1px] ${isSelected ? "text-primary" : "text-[#6f6f6f]"}`}>
                 {format(date, "d")}
               </span>
             </MiniCircularProgress>
@@ -1012,7 +1020,7 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
     <div className="flex flex-col h-full bg-background">
       {/* 1. Day Strip */}
       <div className="pt-2 pb-0">
-        <DayStrip selectedDate={selectedDate} onSelectDate={setSelectedDate} groups={groups} />
+        <DayStrip selectedDate={selectedDate} onSelectDate={setSelectedDate} groups={groups} liveCounters={counters} />
       </div>
 
       {/* 2. Group Filter Slider */}
