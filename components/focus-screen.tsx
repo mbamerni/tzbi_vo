@@ -896,7 +896,7 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
             dhikr_id: dhikrId,
             log_date: dateStr,
             count: count,
-            updated_at: new Date().toISOString(),
+            // updated_at: new Date().toISOString(), // Removed: Column does not exist
           },
           { onConflict: "user_id,dhikr_id,log_date" }
         );
