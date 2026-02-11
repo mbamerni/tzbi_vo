@@ -250,8 +250,12 @@ export function useStats(range: DateRange = 'week') {
                 topAdhkar: topList
             });
 
-        } catch (err) {
-            console.error('Error fetching stats:', err);
+        } catch (err: any) {
+            if (err.message === "Failed to fetch" || err.message === "Offline") {
+                console.warn("Could not fetch stats (Offline mode)");
+            } else {
+                console.error('Error fetching stats:', err);
+            }
         } finally {
             setLoading(false);
         }

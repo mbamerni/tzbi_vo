@@ -790,8 +790,12 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
       // Success
       setErrorMessage(null);
 
-    } catch (e) {
-      console.error("Error saving progress (saving locally):", e);
+    } catch (e: any) {
+      if (e.message === "Offline" || e.message === "Failed to fetch") {
+        console.warn("Saving locally (Offline mode)");
+      } else {
+        console.error("Error saving progress (saving locally):", e);
+      }
       setErrorMessage("تعذر الاتصال. سيتم الحفظ تلقائياً عند عودة الإنترنت.");
 
       // Save directly to localStorage queue
