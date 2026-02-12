@@ -705,23 +705,52 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
   // "Adding" -> The modal adds to global `groups`.
   // We need to inject it into the schedule.
 
-  // Sync Effect for New Items
+  // Sync Global Changes (from Manage Screen) to Today's Schedule
+  // This ensures that if the user adds/removes items in the "Groups" tab,
+  // those changes reflect in "Today's" schedule, but NOT "Yesterday's".
   useEffect(() => {
-    // Find items in `groups` that are NOT in `currentConfig` AND are marked `is_active` globally (default new state).
-    // Assuming new items come in as `is_active=true`.
-    // If an item is in `groups` (active globally) but not in our local schedule... 
-    // It implies it was either disabled locally OR just added globally.
+    // We only want to auto-update the schedule for the SYSTEM "Today".
+    // Past days should remain frozen with their existing snapshots.
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
 
-    // Basic approach: The `onNavigateToGroups` might handle addition.
-    // If the user adds a group there, it updates `groups`.
-    // We should probably rely on the user manually enabling it here if it doesn't show up?
-    // Or, we auto-add any *newly appearing* ID to the current schedule.
-    // That's risky (might re-enable deleted ones).
+    // Calculate what the "Global" state says should be active
+    const globalActiveGroupIds = groups
+      .filter(g => g.is_active !== false)
+      .map(g => g.id);
 
-    // Let's leave "Add" behavior manual for now or trust the global default for new/future dates?
-    // No, if we override with schedule, global default is ignored for future.
-    // We'll stick to manual toggle for now if it doesn't appear.
-  }, [groups]);
+    const globalActiveDhikrIds = groups
+      .flatMap(g => g.adhkar)
+      .filter(d => d.is_active !== false)
+      .map(d => d.id);
+
+    // Update scheduleConfigs for Today
+    setScheduleConfigs(prev => {
+      const currentTodayConfig = prev[todayStr];
+
+      // Optimize: Check if actually different to avoid re-renders
+      const isSameGroups = currentTodayConfig
+        && currentTodayConfig.activeGroupIds.length === globalActiveGroupIds.length
+        && currentTodayConfig.activeGroupIds.every(id => globalActiveGroupIds.includes(id));
+
+      const isSameDhikrs = currentTodayConfig
+        && currentTodayConfig.activeDhikrIds.length === globalActiveDhikrIds.length
+        && currentTodayConfig.activeDhikrIds.every(id => globalActiveDhikrIds.includes(id));
+
+      if (isSameGroups && isSameDhikrs) return prev;
+
+      console.log("Syncing Global Changes to Today's Schedule");
+      const next = {
+        ...prev,
+        [todayStr]: {
+          activeGroupIds: globalActiveGroupIds,
+          activeDhikrIds: globalActiveDhikrIds
+        }
+      };
+      localStorage.setItem('user_schedule_configs', JSON.stringify(next));
+      return next;
+    });
+
+  }, [groups]); // Run whenever Global Groups change
 
   // Determine which list of adhkar to show
   const visibleAdhkar = React.useMemo(() => {
