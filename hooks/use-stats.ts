@@ -56,16 +56,32 @@ export function useStats(range: DateRange = 'week') {
                 return;
             }
 
-            // 1. Fetch Active Adhkar (to know targets)
-            // We need this to calculate "Unweighted Average Completion"
-            const { data: allAdhkar } = await supabase
-                .from('adhkar')
-                .select('id, text, target_count')
+            // 1. Fetch Active Groups & Adhkar
+            // We need to exclude adhkar that are in INACTIVE groups, even if the dhikr itself is active.
+
+            const { data: activeGroups } = await supabase
+                .from('groups')
+                .select('id')
                 .eq('user_id', userId)
                 .eq('is_active', true);
 
+            const activeGroupIds = activeGroups?.map(g => g.id) || [];
+
+            const { data: allAdhkar } = await supabase
+                .from('adhkar')
+                .select('id, text, target_count, group_id')
+                .eq('user_id', userId)
+                .eq('is_active', true); // Active adhkar only
+
             const activeAdhkarMap = new Map<string, { text: string, target: number }>();
-            allAdhkar?.forEach(a => activeAdhkarMap.set(a.id, { text: a.text, target: a.target_count || 1 }));
+
+            allAdhkar?.forEach(a => {
+                // IMPORTANT: Only count if Group is ALSO active
+                if (activeGroupIds.includes(a.group_id)) {
+                    activeAdhkarMap.set(a.id, { text: a.text, target: a.target_count || 1 });
+                }
+            });
+
             const totalActiveAdhkarCount = activeAdhkarMap.size || 1;
 
             // 2. Fetch Logs (Filtered by user!)
