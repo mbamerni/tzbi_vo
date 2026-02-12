@@ -581,8 +581,17 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
   const [showManualInput, setShowManualInput] = useState(false);
   const [tapAnimation, setTapAnimation] = useState(false);
 
-  // Slider State
-  const [selectedGroupId, setSelectedGroupId] = useState<string | "all">("all");
+  // Slider State - Persist active group
+  const [selectedGroupId, setSelectedGroupId] = useState<string | "all">(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('last_selected_group_id') || 'all';
+    }
+    return 'all';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('last_selected_group_id', selectedGroupId);
+  }, [selectedGroupId]);
 
   // Determine which list of adhkar to show
   const visibleAdhkar = React.useMemo(() => {
@@ -594,8 +603,20 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
     return group ? group.adhkar : [];
   }, [groups, selectedGroupId]);
 
-  // Active Dhikr Logic (based on ID now, not index)
-  const [activeDhikrId, setActiveDhikrId] = useState<string | null>(null);
+  // Active Dhikr Logic - Persist active dhikr
+  const [activeDhikrId, setActiveDhikrId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const savedId = localStorage.getItem('last_active_dhikr_id');
+      return savedId || null;
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    if (activeDhikrId) {
+      localStorage.setItem('last_active_dhikr_id', activeDhikrId);
+    }
+  }, [activeDhikrId]);
 
   // Set initial active dhikr when data loads or filter changes
   // Set initial active dhikr when data loads or filter changes
