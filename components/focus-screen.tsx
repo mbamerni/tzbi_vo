@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import type { DhikrGroup, Dhikr } from "@/lib/athkari-data";
 import { createClient } from "@/lib/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
@@ -585,15 +585,153 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
     localStorage.setItem('last_selected_group_id', selectedGroupId);
   }, [selectedGroupId]);
 
+  // --- Schedule / Configuration Logic (Time Travel) ---
+  // Stores { "YYYY-MM-DD": { activeGroupIds: string[], activeDhikrIds: string[] } }
+  // This defines WHICH items are active on a given date, preserving history.
+  const [scheduleConfigs, setScheduleConfigs] = useState<Record<string, { activeGroupIds: string[], activeDhikrIds: string[] }>>({});
+
+  // Load configs on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('user_schedule_configs');
+        if (saved) setScheduleConfigs(JSON.parse(saved));
+      } catch (e) {
+        console.error("Failed to load schedule", e);
+      }
+    }
+  }, []);
+
+  // Determine Effective Configuration for Selected Date
+  const currentConfig = useMemo(() => {
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+
+    // 1. Check if there is an explicit config for this day
+    if (scheduleConfigs[dateStr]) {
+      return scheduleConfigs[dateStr];
+    }
+
+    // 2. Find the latest config BEFORE this day
+    const sortedDates = Object.keys(scheduleConfigs).sort().reverse();
+    const latestDate = sortedDates.find(d => d <= dateStr);
+
+    if (latestDate) {
+      return scheduleConfigs[latestDate];
+    }
+
+    // 3. Fallback: Use "Global" current state from props (Initial state)
+    // This happens on first load or for older dates before we started tracking.
+    return {
+      activeGroupIds: groups.filter(g => g.is_active !== false).map(g => g.id),
+      activeDhikrIds: groups.flatMap(g => g.adhkar).filter(d => d.is_active !== false).map(d => d.id)
+    };
+  }, [selectedDate, scheduleConfigs, groups]);
+
+  // Derived Groups based on Config
+  const displayedGroups = useMemo(() => {
+    if (!currentConfig) return groups;
+
+    return groups
+      .filter(g => currentConfig.activeGroupIds.includes(g.id))
+      .map(g => ({
+        ...g,
+        adhkar: g.adhkar.filter(d => currentConfig.activeDhikrIds.includes(d.id))
+      }));
+  }, [groups, currentConfig]);
+
+  // Handler to modify settings (Toggle)
+  // This creates/updates a config entry for the SELECTED DATE
+  // "Affects the selected day and after" -> we write to selectedDate. 
+  // Future dates will automatically pick this up via step 2 above.
+  const updateSchedule = useCallback((newActiveGroupIds: string[], newActiveDhikrIds: string[]) => {
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+
+    setScheduleConfigs(prev => {
+      const next = {
+        ...prev,
+        [dateStr]: {
+          activeGroupIds: newActiveGroupIds,
+          activeDhikrIds: newActiveDhikrIds
+        }
+      };
+      localStorage.setItem('user_schedule_configs', JSON.stringify(next));
+      return next;
+    });
+  }, [selectedDate]);
+
+  // Override the toggle functions to use our Schedule system
+  // NOTE: We don't call the global 'toggleGroup' prop anymore, to avoid changing history.
+  // We strictly modify the LOCAL schedule. (Unless we want to sync back to global "Default"?)
+  // For now, let's treat Focus Mode as having its own override schedule.
+
+  const handleToggleGroup = (groupId: string, isActive: boolean) => {
+    const currentGroups = currentConfig.activeGroupIds;
+    let newGroups = [...currentGroups];
+
+    if (isActive) {
+      if (!newGroups.includes(groupId)) newGroups.push(groupId);
+    } else {
+      newGroups = newGroups.filter(id => id !== groupId);
+    }
+
+    updateSchedule(newGroups, currentConfig.activeDhikrIds);
+  };
+
+  const handleToggleDhikr = (dhikrId: string, isActive: boolean) => {
+    const currentDhikrs = currentConfig.activeDhikrIds;
+    let newDhikrs = [...currentDhikrs];
+
+    if (isActive) {
+      if (!newDhikrs.includes(dhikrId)) newDhikrs.push(dhikrId);
+    } else {
+      newDhikrs = newDhikrs.filter(id => id !== dhikrId);
+    }
+
+    updateSchedule(currentConfig.activeGroupIds, newDhikrs);
+  };
+
+  // When adding, we need to ensure the new item is Added to the current schedule?
+  // Use `useEffect` to watch `groups` length changes?
+  // If `groups` prop changes (new item added via modal), we should auto-add it to today's schedule?
+  // This is tricky. Let's assume the user adds it globally first.
+  // Then we detect it's missing from schedule and add it?
+
+  // Actually, if a NEW group/dhikr appears in `groups` that isn't in `activeGroupIds`...
+  // It might be because it was just added.
+  // How to distinguish "Just Added" from "Previously Disabled"?
+  // Check creation time? Complex.
+  // Simple hack: If a group/dhikr ID is in `groups` but NOT in our config, check if it's "New"?
+  // Let's assume logic:
+  // "Adding" -> The modal adds to global `groups`.
+  // We need to inject it into the schedule.
+
+  // Sync Effect for New Items
+  useEffect(() => {
+    // Find items in `groups` that are NOT in `currentConfig` AND are marked `is_active` globally (default new state).
+    // Assuming new items come in as `is_active=true`.
+    // If an item is in `groups` (active globally) but not in our local schedule... 
+    // It implies it was either disabled locally OR just added globally.
+
+    // Basic approach: The `onNavigateToGroups` might handle addition.
+    // If the user adds a group there, it updates `groups`.
+    // We should probably rely on the user manually enabling it here if it doesn't show up?
+    // Or, we auto-add any *newly appearing* ID to the current schedule.
+    // That's risky (might re-enable deleted ones).
+
+    // Let's leave "Add" behavior manual for now or trust the global default for new/future dates?
+    // No, if we override with schedule, global default is ignored for future.
+    // We'll stick to manual toggle for now if it doesn't appear.
+  }, [groups]);
+
   // Determine which list of adhkar to show
   const visibleAdhkar = React.useMemo(() => {
     if (selectedGroupId === "all") {
       // Flatten all adhkar from all groups
-      return groups.flatMap(g => g.adhkar);
+      return displayedGroups.flatMap(g => g.adhkar);
     }
-    const group = groups.find(g => g.id === selectedGroupId);
+    const group = displayedGroups.find(g => g.id === selectedGroupId);
     return group ? group.adhkar : [];
-  }, [groups, selectedGroupId]);
+  }, [displayedGroups, selectedGroupId]);
 
   // Active Dhikr Logic - Persist active dhikr
   const [activeDhikrId, setActiveDhikrId] = useState<string | null>(() => {
@@ -640,7 +778,7 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
   }, [visibleAdhkar, activeDhikrId, counters, countersLoaded]);
 
   const activeDhikr = visibleAdhkar.find(d => d.id === activeDhikrId) || null;
-  const activeGroup = groups.find(g => g.id === selectedGroupId) || groups[0]; // Fallback for UI if needed
+  const activeGroup = displayedGroups.find(g => g.id === selectedGroupId) || displayedGroups[0]; // Fallback for UI if needed
 
   // No file-based audio refs needed
   // We use Web Audio API directly in playSound
@@ -1163,7 +1301,7 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
         <DayStrip
           selectedDate={selectedDate}
           onSelectDate={setSelectedDate}
-          groups={groups}
+          groups={displayedGroups}
           liveCounters={counters}
           dailySummaries={dailySummaries}
         />
@@ -1172,7 +1310,7 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
       {/* 2. Group Filter Slider */}
       <div className="active:pt-0">
         <GroupFilter
-          groups={groups}
+          groups={displayedGroups}
           selectedGroupId={selectedGroupId}
           onSelectGroup={setSelectedGroupId}
         />
