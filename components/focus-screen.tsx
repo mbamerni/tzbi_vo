@@ -619,11 +619,25 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
       return scheduleConfigs[latestDate];
     }
 
-    // 3. Fallback: Use "Global" current state from props (Initial state)
-    // This happens on first load or for older dates before we started tracking.
+    // 3. Fallback: Use "Global" current state BUT filter by Creation Date
+    // If we are looking at a past date that has NO snapshot, likely it was before we started tracking.
+    // We should NOT show items that were created AFTER this date.
+    // This solves: "If I add a group Today, it shouldn't appear Yesterday".
+
+    // We treat "No Snapshot" as "Default State at that time".
+    const limitDate = new Date(selectedDate);
+    limitDate.setHours(23, 59, 59, 999); // End of selected day
+
     return {
-      activeGroupIds: groups.filter(g => g.is_active !== false).map(g => g.id),
-      activeDhikrIds: groups.flatMap(g => g.adhkar).filter(d => d.is_active !== false).map(d => d.id)
+      activeGroupIds: groups
+        .filter(g => g.is_active !== false)
+        .filter(g => !g.created_at || new Date(g.created_at) <= limitDate)
+        .map(g => g.id),
+      activeDhikrIds: groups
+        .flatMap(g => g.adhkar)
+        .filter(d => d.is_active !== false)
+        .filter(d => !d.created_at || new Date(d.created_at) <= limitDate)
+        .map(d => d.id)
     };
   }, [selectedDate, scheduleConfigs, groups]);
 

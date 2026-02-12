@@ -7,6 +7,7 @@ export interface Dhikr {
   icon?: string;
   is_active?: boolean;
   sort_order?: number;
+  created_at?: string;
 }
 
 export interface DhikrGroup {
@@ -16,6 +17,7 @@ export interface DhikrGroup {
   adhkar: Dhikr[];
   is_active?: boolean;
   sort_order?: number;
+  created_at?: string;
 }
 
 export interface DailyStats {

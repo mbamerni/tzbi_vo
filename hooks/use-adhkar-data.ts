@@ -107,16 +107,18 @@ export function useAdhkarData() {
                         icon: adhkar.icon || group.icon,
                         group_id: group.id,
                         is_active: adhkar.is_active,
-                        sort_order: adhkar.sort_order
-                    }));
+                        sort_order: adhkar.sort_order,
+                        created_at: adhkar.created_at
+                    })).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
                 return {
                     id: group.id,
                     name: group.name,
                     icon: group.icon,
-                    adhkar: groupAdhkar,
                     is_active: group.is_active,
-                    sort_order: group.sort_order
+                    sort_order: group.sort_order,
+                    created_at: group.created_at,
+                    adhkar: groupAdhkar
                 };
             });
 
