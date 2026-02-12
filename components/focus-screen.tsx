@@ -152,12 +152,14 @@ function DayStrip({
   selectedDate,
   onSelectDate,
   groups,
-  liveCounters // New Prop
+  liveCounters, // New Prop
+  dailySummaries // New Prop
 }: {
   selectedDate: Date;
   onSelectDate: (date: Date) => void;
   groups: DhikrGroup[];
   liveCounters?: Record<string, number>;
+  dailySummaries?: Record<string, number>;
 }) {
   const supabase = createClient();
   const [pastDays, setPastDays] = useState(14);
@@ -308,17 +310,7 @@ function DayStrip({
         const isSelected = isSameDay(date, selectedDate);
         const isToday = isSameDay(date, new Date());
 
-        let progress = dailyStats[dateStr] || 0;
-
-        // If this is the currently selected date, try to use live counters if available
-        if (isSelected && liveCounters && allAdhkar.length > 0) {
-          let sumPct = 0;
-          allAdhkar.forEach(d => {
-            const count = liveCounters[d.id] || 0;
-            sumPct += Math.min(count / d.target, 1);
-          });
-          progress = sumPct / allAdhkar.length;
-        }
+        let progress = dailySummaries?.[dateStr] ?? dailyStats[dateStr] ?? 0;
 
         return (
           <button
@@ -657,6 +649,67 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
     (dhikrId: string) => counters[dhikrId] || 0,
     [counters]
   );
+
+  // --- Daily Summaries Persistence (LocalStorage) ---
+  // Stores { "YYYY-MM-DD": 0.85 } to preserve history regardless of setting changes
+  const [dailySummaries, setDailySummaries] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('daily_summaries');
+        if (saved) setDailySummaries(JSON.parse(saved));
+      } catch (e) {
+        console.error("Failed to load summaries", e);
+      }
+    }
+  }, []);
+
+  const saveDailySummary = useCallback((date: Date, newSummary: number) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    setDailySummaries(prev => {
+      if (prev[dateStr] === newSummary) return prev; // No change
+      const next = { ...prev, [dateStr]: newSummary };
+      localStorage.setItem('daily_summaries', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  // Update Summary for TODAY when counters or active groups change
+  useEffect(() => {
+    // Calculate current percentage for today using ACTIVE groups only
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+
+    // Only update if selectedDate is TODAY (or we allow editing past days?)
+    // User said: "Each day has its own... if I activate ... it exists for today and after".
+    // If I go back to yesterday and change settings, should it update yesterday? 
+    // User said: "In the day after... previous day should not change".
+    // This implies we ONLY update "Today" (or the active day being edited).
+    // If I explicitly go to yesterday and click buttons, I AM editing yesterday.
+    // So yes, we update `selectedDate`'s summary based on CURRENT settings.
+    // Wait, if I go to yesterday, `groups` are strictly "Current Global Settings".
+    // If I change global settings, it changes for logical "Today".
+    // If I view yesterday, I see yesterday's snapshot.
+    // If I *interact* (tap dhikr) on yesterday, I am changing it.
+    // So we should update summary for `selectedDate`.
+
+    const activeAdhkar = groups
+      .filter(g => g.is_active !== false)
+      .flatMap(g => g.adhkar)
+      .filter(d => d.is_active !== false);
+
+    if (activeAdhkar.length === 0) return;
+
+    let sumPct = 0;
+    activeAdhkar.forEach(d => {
+      const count = counters[d.id] || 0;
+      sumPct += Math.min(count / d.target, 1);
+    });
+    const avg = sumPct / activeAdhkar.length;
+
+    saveDailySummary(selectedDate, avg);
+
+  }, [counters, groups, selectedDate, saveDailySummary]);
 
   // Audio/Sound logic...
   // --- Advanced Audio Logic (Web Audio API with Silence Trimming) ---
@@ -1107,7 +1160,13 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
     <div className="flex flex-col h-full bg-background">
       {/* 1. Day Strip */}
       <div className="pt-2 pb-0">
-        <DayStrip selectedDate={selectedDate} onSelectDate={setSelectedDate} groups={groups} liveCounters={counters} />
+        <DayStrip
+          selectedDate={selectedDate}
+          onSelectDate={setSelectedDate}
+          groups={groups}
+          liveCounters={counters}
+          dailySummaries={dailySummaries}
+        />
       </div>
 
       {/* 2. Group Filter Slider */}
