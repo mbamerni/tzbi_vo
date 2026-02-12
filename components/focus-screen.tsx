@@ -1049,6 +1049,11 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
     );
   }
 
+  // Loading state or initializing
+  if (visibleAdhkar.length > 0 && !activeDhikr) {
+    return <div className="flex h-full items-center justify-center"><div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" /></div>;
+  }
+
   if (!activeDhikr) {
     return (
       <div className="flex flex-col h-full bg-background items-center justify-center p-8 text-center space-y-4">
