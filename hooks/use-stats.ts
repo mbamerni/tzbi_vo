@@ -42,7 +42,7 @@ export function useStats(range: DateRange = 'week') {
         topAdhkar: [],
     });
     const [loading, setLoading] = useState(true);
-    const supabase = createClient();
+    const [supabase] = useState(() => createClient());
 
     const fetchStats = useCallback(async () => {
         try {
