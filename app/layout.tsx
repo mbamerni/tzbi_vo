@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { Amiri } from "next/font/google";
 
 import "./globals.css";
+import { Toaster } from "@/components/ui/sonner";
 
 const _amiri = Amiri({
   subsets: ["arabic", "latin"],
@@ -37,7 +38,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ar" dir="rtl" className="bg-background">
-      <body className={`font-sans antialiased ${_amiri.variable}`}>{children}</body>
+      <body className={`font-sans antialiased ${_amiri.variable}`}>
+        {children}
+        <Toaster />
+      </body>
     </html>
   );
 }
