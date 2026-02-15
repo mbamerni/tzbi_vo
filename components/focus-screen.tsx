@@ -531,17 +531,14 @@ function DhikrCardsSlider({
               </p>
 
               {/* Count */}
-              <div className="flex items-center justify-end gap-1.5 leading-none mt-0">
-                <div className="flex items-baseline gap-0.5 text-[11px] font-semibold text-muted-foreground/80">
-                  <span>{dhikr.target}</span>
-                  <span className="opacity-50 mx-0.5">/</span>
-                </div>
+              <div className="flex items-center justify-end gap-1 leading-none mt-[-2px]">
+                <span className="text-[9px] font-medium text-[#8E8E93] tracking-tight">{dhikr.target} / </span>
                 <motion.span
                   key={current}
                   initial={{ scale: 1.2, color: "hsl(var(--primary))" }}
                   animate={{ scale: 1, color: "#84994f" }}
                   transition={{ duration: 0.2 }}
-                  className="text-[14px] font-bold text-[#84994f] tracking-tight tabular-nums"
+                  className="text-[14px] font-medium text-[#84994f] tracking-tight"
                 >
                   {current}
                 </motion.span>
@@ -1428,12 +1425,9 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
             </div>
           </div>
 
-          {/* Bottom Target Indicator - More Visible */}
-          <div className="absolute bottom-6 flex items-center justify-center pointer-events-none">
-            <div className="bg-white/90 shadow-sm border border-black/5 px-5 py-2 rounded-full backdrop-blur-md">
-              <span className="text-xs font-medium text-muted-foreground ml-1">الهدف:</span>
-              <span className="text-sm font-bold text-foreground font-mono">{activeDhikr.target}</span>
-            </div>
+          {/* Bottom Target Indicator */}
+          <div className="absolute bottom-6 text-sm font-medium text-muted-foreground bg-secondary/50 px-4 py-1.5 rounded-full backdrop-blur-sm">
+            الهدف: {activeDhikr.target}
           </div>
 
           {/* Bottom Left Controls: Virtue, Manual, Reset */}
@@ -1442,9 +1436,9 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
             <div
               role="button"
               onClick={() => setShowVirtue(true)}
-              className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-transform active:scale-95 text-accent shadow-sm border border-black/5"
+              className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-transform active:scale-95 text-accent"
               style={{
-                background: '#FFFFFF',
+                background: '#F0F0F0',
                 boxShadow: '-0.946px 0.946px 1.892px 0 rgba(198, 198, 199, 0.20) inset, 0.946px -0.946px 1.892px 0 rgba(198, 198, 199, 0.20) inset, -0.946px -0.946px 1.892px 0 rgba(255, 255, 255, 0.90) inset, 0.946px 0.946px 2.366px 0 rgba(198, 198, 199, 0.90) inset'
               }}
             >

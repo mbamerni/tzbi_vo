@@ -36,7 +36,12 @@ export function useGroups(userId: string | null) {
 
             const combined: DhikrGroup[] = data.map(g => ({
                 ...g,
-                adhkar: adhkarData.filter(a => a.group_id === g.id)
+                adhkar: adhkarData
+                    .filter(a => a.group_id === g.id)
+                    .map(a => ({
+                        ...a,
+                        target: a.target_count ?? a.target ?? 33 // Map DB 'target_count' to 'target'
+                    }))
             }));
 
             setGroups(combined);
