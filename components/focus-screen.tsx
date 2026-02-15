@@ -1412,14 +1412,9 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
                 {isComplete ? (
                   <Check className="text-primary animate-in zoom-in spin-in-12" size={32} strokeWidth={3} />
                 ) : (
-                  <>
-                    <span className="text-4xl font-bold font-mono tracking-tight text-foreground">
-                      {currentCount}
-                    </span>
-                    <span className="text-sm text-muted-foreground mt-1 font-medium opacity-80">
-                      / {activeDhikr.target}
-                    </span>
-                  </>
+                  <span className="text-4xl font-bold font-mono tracking-tight text-foreground">
+                    {currentCount}
+                  </span>
                 )}
               </div>
             </div>
