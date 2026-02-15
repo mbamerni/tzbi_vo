@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { DhikrGroup } from '@/lib/athkari-data';
+import { DhikrGroup, DEFAULT_GROUPS } from '@/lib/athkari-data';
 import { toast } from 'sonner';
 
 export function useGroups(userId: string | null) {
