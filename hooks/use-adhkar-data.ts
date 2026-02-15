@@ -78,7 +78,7 @@ export function useAdhkarData() {
                 .from('groups')
                 .select('*')
                 .eq('user_id', currentUserId)
-                .order('sort_order', { ascending: true })
+                .order('sort_order', { ascending: true, nullsFirst: true })
                 .order('created_at', { ascending: true })
                 .order('id', { ascending: true });
 
@@ -88,7 +88,7 @@ export function useAdhkarData() {
                 .from('adhkar')
                 .select('*')
                 .eq('user_id', currentUserId)
-                .order('sort_order', { ascending: true })
+                .order('sort_order', { ascending: true, nullsFirst: true })
                 .order('created_at', { ascending: true })
                 .order('id', { ascending: true });
 
@@ -109,7 +109,7 @@ export function useAdhkarData() {
                         is_active: adhkar.is_active,
                         sort_order: adhkar.sort_order,
                         created_at: adhkar.created_at
-                    })).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+                    }));
 
                 return {
                     id: group.id,
@@ -221,31 +221,9 @@ export function useAdhkarData() {
             const group = groups.find(g => g.id === groupId);
             const currentAdhkar = group?.adhkar || [];
 
-            // Check for missing sort orders which cause "Jumping to Top" issues (Postgres NULLS LAST)
-            const hasMissingSort = currentAdhkar.some(d => !d.sort_order);
-
-            if (hasMissingSort) {
-                // Lazy Migration: Fix sort orders for this group before adding
-                console.log('Fixing sort_order for group', groupId);
-                await Promise.all(currentAdhkar.map((d, idx) =>
-                    supabase.from('adhkar').update({ sort_order: idx + 1 }).eq('id', d.id)
-                ));
-            }
-
-            // Calculate next sort safely. 
-            // If we just fixed them, max is length. available gaps?
+            // Calculate next sort safely. Treat null/undefined as 0.
             const currentMaxSort = currentAdhkar.reduce((max, d) => Math.max(max, d.sort_order || 0), 0);
-            // If we implicitly fixed them to 1..N, max is N.
-            // If we didn't fix (no nulls), max is Max.
-            // But if existing Max < Length (duplicates?), safer to use Length? 
-            // Better: use Max.
-
-            // If we just ran fix, the local state 'currentAdhkar' still has old nulls!
-            // But we know we just updated them to 1..Length.
-            // So effective max is currentAdhkar.length.
-
-            const effectiveMax = hasMissingSort ? currentAdhkar.length : currentMaxSort;
-            const nextSort = effectiveMax + 1;
+            const nextSort = currentMaxSort + 1;
 
             const { error } = await supabase.from('adhkar').insert([{
                 group_id: groupId,
