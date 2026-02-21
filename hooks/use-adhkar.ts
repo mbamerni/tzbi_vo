@@ -95,29 +95,37 @@ export function useAdhkar(
         if (groupIndex === -1 || dhikrIndex === -1) return;
 
         const group = groups[groupIndex];
-        const adhkarList = group.adhkar;
+        const adhkarList = [...group.adhkar]; // Clone the array for mutation
         const neighborIndex = direction === 'up' ? dhikrIndex - 1 : dhikrIndex + 1;
 
         if (neighborIndex < 0 || neighborIndex >= adhkarList.length) return;
 
+        // Swap the elements in memory
         const currentDhikr = adhkarList[dhikrIndex];
-        const neighborDhikr = adhkarList[neighborIndex];
-
-        // Ensure sort_order exists
-        const currentSort = currentDhikr.sort_order ?? dhikrIndex + 1;
-        const neighborSort = neighborDhikr.sort_order ?? neighborIndex + 1;
-
-        // Optimistic update logic would be complex here because we don't have setGroups directly.
-        // We rely on onUpdate (fetch) to refresh the list, or we could accept setGroups.
-        // For simplicity and decoupling, we will just await the DB update then fetch.
-        // If sorting feels laggy, we can enhance this hook to accept setGroups.
+        adhkarList[dhikrIndex] = adhkarList[neighborIndex];
+        adhkarList[neighborIndex] = currentDhikr;
 
         try {
-            // Swap sort orders in DB
-            await Promise.all([
-                supabase.from('adhkar').update({ sort_order: neighborSort }).eq('id', currentDhikr.id),
-                supabase.from('adhkar').update({ sort_order: currentSort }).eq('id', neighborDhikr.id)
-            ]);
+            // Self-healing algorithm: 
+            // We assign an exact 1-based index to every item in the newly ordered array.
+            // If the item's current DB sort_order doesn't match, we add it to the update batch.
+            // This natively handles nulls, duplicates, and the swapped items simultaneously.
+            const updates = adhkarList.map((d, index) => {
+                const expectedSort = index + 1;
+
+                if (d.sort_order !== expectedSort) {
+                    return supabase
+                        .from('adhkar')
+                        .update({ sort_order: expectedSort })
+                        .eq('id', d.id);
+                }
+                return null;
+            }).filter(Boolean); // Remove nulls (items that don't need updating)
+
+            if (updates.length > 0) {
+                await Promise.all(updates);
+            }
+
             await onUpdate();
         } catch (err) {
             console.error('Error reordering dhikr:', err);

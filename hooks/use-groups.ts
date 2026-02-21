@@ -199,15 +199,25 @@ export function useGroups(userId: string | null) {
         newGroups[neighborIndex] = currentGroup;
         setGroups(newGroups);
 
-        // Swap sort orders
-        const currentSort = currentGroup.sort_order ?? currentIndex + 1;
-        const neighborSort = neighborGroup.sort_order ?? neighborIndex + 1;
-
         try {
-            await Promise.all([
-                supabase.from('groups').update({ sort_order: neighborSort }).eq('id', currentGroup.id),
-                supabase.from('groups').update({ sort_order: currentSort }).eq('id', neighborGroup.id)
-            ]);
+            // Self-healing algorithm: 
+            // We assign an exact 1-based index to every item in the newly ordered array.
+            // If the item's current DB sort_order doesn't match, we add it to the update batch.
+            const updates = newGroups.map((g, index) => {
+                const expectedSort = index + 1;
+
+                if (g.sort_order !== expectedSort) {
+                    return supabase
+                        .from('groups')
+                        .update({ sort_order: expectedSort })
+                        .eq('id', g.id);
+                }
+                return null;
+            }).filter(Boolean);
+
+            if (updates.length > 0) {
+                await Promise.all(updates);
+            }
         } catch (err) {
             console.error('Error reordering groups:', err);
             await fetchGroups(); // Revert on error
