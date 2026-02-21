@@ -123,7 +123,7 @@ function DhikrFormModal({
       onClick={onClose}
     >
       <div
-        className="bg-card rounded-t-3xl p-6 w-full max-w-lg shadow-xl animate-in slide-in-from-bottom duration-300 max-h-[85dvh] overflow-y-auto"
+        className="bg-[#F0F0F0] rounded-t-3xl p-6 w-full max-w-lg shadow-xl animate-in slide-in-from-bottom duration-300 max-h-[85dvh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
@@ -149,7 +149,7 @@ function DhikrFormModal({
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="اكتب نص الذكر هنا..."
-              className="w-full p-3 rounded-xl border border-border bg-background text-foreground text-base resize-none h-24 focus:outline-none focus:ring-2 focus:ring-primary/30 font-serif"
+              className="w-full p-3 rounded-xl text-foreground text-base resize-none h-24 focus:outline-none font-serif neu-pressed"
               dir="rtl"
             />
           </div>
@@ -163,7 +163,7 @@ function DhikrFormModal({
               type="number"
               value={target}
               onChange={(e) => setTarget(Number(e.target.value))}
-              className="w-full p-3 rounded-xl border border-border bg-background text-foreground text-base focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full p-3 rounded-xl text-foreground text-base focus:outline-none neu-pressed"
               min={1}
             />
           </div>
@@ -176,7 +176,7 @@ function DhikrFormModal({
             <button
               type="button"
               onClick={() => setShowIconPicker(!showIconPicker)}
-              className="flex items-center gap-2 p-3 rounded-xl border border-border bg-background text-foreground text-sm w-full min-h-[44px]"
+              className="flex items-center gap-2 p-3 rounded-xl text-foreground text-sm w-full min-h-[44px] neu-flat active:neu-pressed"
             >
               {selectedIcon ? (
                 <>
@@ -192,7 +192,7 @@ function DhikrFormModal({
               )}
             </button>
             {showIconPicker && (
-              <div className="grid grid-cols-4 gap-2 mt-2 p-3 rounded-xl border border-border bg-background">
+              <div className="grid grid-cols-4 gap-2 mt-2 p-4 rounded-2xl neu-pressed">
                 {ICON_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
@@ -204,8 +204,8 @@ function DhikrFormModal({
                       setShowIconPicker(false);
                     }}
                     className={`flex items-center justify-center p-3 rounded-xl transition-all min-h-[48px] ${selectedIcon === opt.value
-                      ? "bg-primary/10 border border-primary/30"
-                      : "bg-secondary hover:bg-secondary/80"
+                      ? "neu-pressed"
+                      : "neu-flat hover:neu-pressed"
                       }`}
                   >
                     <div style={{ color: opt.color }}>
@@ -226,7 +226,7 @@ function DhikrFormModal({
               value={virtue}
               onChange={(e) => setVirtue(e.target.value)}
               placeholder="اكتب فضل الذكر هنا أو استخدم الذكاء الاصطناعي..."
-              className="w-full p-3 rounded-xl border border-border bg-background text-foreground text-sm resize-none h-20 focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full p-3 rounded-xl text-foreground text-sm resize-none h-20 focus:outline-none neu-pressed"
               dir="rtl"
             />
           </div>
@@ -248,7 +248,7 @@ function DhikrFormModal({
               }
             }}
             disabled={!text.trim()}
-            className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm disabled:opacity-40 min-h-[48px]"
+            className="w-full py-3 rounded-xl text-[#84994f] font-medium text-sm disabled:opacity-40 min-h-[48px] neu-flat active:neu-pressed transition-all"
           >
             {isEdit ? "حفظ التعديلات" : "إضافة الذكر"}
           </button>
@@ -277,7 +277,7 @@ function EditGroupModal({ group, onClose, onSave }: EditGroupModalProps) {
       onClick={onClose}
     >
       <div
-        className="bg-card rounded-2xl p-6 max-w-sm w-full shadow-xl"
+        className="bg-[#F0F0F0] rounded-2xl p-6 max-w-sm w-full shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="font-semibold text-card-foreground text-lg mb-4">
@@ -289,7 +289,7 @@ function EditGroupModal({ group, onClose, onSave }: EditGroupModalProps) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="اسم المجموعة..."
-          className="w-full p-3 rounded-xl border border-border bg-background text-foreground text-base focus:outline-none focus:ring-2 focus:ring-primary/30 mb-4"
+          className="w-full p-3 rounded-xl text-foreground text-base focus:outline-none mb-4 neu-pressed"
           dir="rtl"
         />
 
@@ -299,7 +299,7 @@ function EditGroupModal({ group, onClose, onSave }: EditGroupModalProps) {
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl bg-secondary text-secondary-foreground font-medium text-sm min-h-[44px]"
+            className="flex-1 py-2.5 rounded-xl text-[#A72703] font-medium text-sm min-h-[44px] neu-flat active:neu-pressed"
           >
             إلغاء
           </button>
@@ -312,7 +312,7 @@ function EditGroupModal({ group, onClose, onSave }: EditGroupModalProps) {
               }
             }}
             disabled={!name.trim()}
-            className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm disabled:opacity-40 min-h-[44px]"
+            className="flex-1 py-2.5 rounded-xl text-[#84994f] font-medium text-sm disabled:opacity-40 min-h-[44px] neu-flat active:neu-pressed"
           >
             حفظ
           </button>
@@ -340,7 +340,7 @@ function AddGroupModal({ onClose, onAdd }: AddGroupModalProps) {
       onClick={onClose}
     >
       <div
-        className="bg-card rounded-2xl p-6 max-w-sm w-full shadow-xl"
+        className="bg-[#F0F0F0] rounded-2xl p-6 max-w-sm w-full shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="font-semibold text-card-foreground text-lg mb-4">
@@ -352,7 +352,7 @@ function AddGroupModal({ onClose, onAdd }: AddGroupModalProps) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="اسم المجموعة..."
-          className="w-full p-3 rounded-xl border border-border bg-background text-foreground text-base focus:outline-none focus:ring-2 focus:ring-primary/30 mb-4"
+          className="w-full p-3 rounded-xl text-foreground text-base focus:outline-none mb-4 neu-pressed"
           dir="rtl"
         />
 
@@ -362,7 +362,7 @@ function AddGroupModal({ onClose, onAdd }: AddGroupModalProps) {
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl bg-secondary text-secondary-foreground font-medium text-sm min-h-[44px]"
+            className="flex-1 py-2.5 rounded-xl text-[#A72703] font-medium text-sm min-h-[44px] neu-flat active:neu-pressed"
           >
             إلغاء
           </button>
@@ -375,7 +375,7 @@ function AddGroupModal({ onClose, onAdd }: AddGroupModalProps) {
               }
             }}
             disabled={!name.trim()}
-            className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm disabled:opacity-40 min-h-[44px]"
+            className="flex-1 py-2.5 rounded-xl text-[#84994f] font-medium text-sm disabled:opacity-40 min-h-[44px] neu-flat active:neu-pressed"
           >
             إضافة
           </button>
@@ -474,7 +474,7 @@ export default function GroupsScreen({
           <button
             type="button"
             onClick={() => setSelectedGroup(null)}
-            className="p-2.5 rounded-xl bg-secondary text-secondary-foreground min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className="p-2.5 rounded-xl text-[#6f6f6f] min-h-[44px] min-w-[44px] flex items-center justify-center neu-flat active:neu-pressed transition-all"
           >
             <ChevronRight size={18} />
           </button>
@@ -494,7 +494,7 @@ export default function GroupsScreen({
             {activeGroupData.adhkar.map((dhikr, index) => (
               <div
                 key={dhikr.id}
-                className={`flex items-start gap-3 p-4 rounded-2xl border transition-all ${dhikr.is_active === false ? "bg-secondary/30 border-border opacity-70" : "bg-card border-border"
+                className={`flex items-start gap-3 p-4 rounded-2xl transition-all ${dhikr.is_active === false ? "opacity-70 neu-pressed" : "neu-flat"
                   }`}
               >
                 {/* Toggle Swtich */}
@@ -566,7 +566,7 @@ export default function GroupsScreen({
             <button
               type="button"
               onClick={() => setShowAddDhikr(true)}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-primary text-primary-foreground font-medium text-sm min-h-[48px]"
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-[#84994f] font-medium text-sm min-h-[48px] neu-flat active:neu-pressed transition-all mt-2"
             >
               <Plus size={18} />
               <span>إضافة ذكر</span>
@@ -615,7 +615,7 @@ export default function GroupsScreen({
           {groups.map((group, index) => (
             <div
               key={group.id}
-              className={`flex items-center gap-3 p-4 rounded-2xl border transition-all ${group.is_active === false ? "bg-secondary/30 border-border opacity-70" : "bg-card border-border"
+              className={`flex items-center gap-3 p-4 rounded-2xl transition-all ${group.is_active === false ? "opacity-70 neu-pressed" : "neu-flat"
                 }`}
             >
               {/* Toggle Switch */}
@@ -682,7 +682,7 @@ export default function GroupsScreen({
           <button
             type="button"
             onClick={() => setShowAddGroup(true)}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-primary text-primary-foreground font-medium text-sm min-h-[48px]"
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-[#84994f] font-medium text-sm min-h-[48px] neu-flat active:neu-pressed transition-all mt-2"
           >
             <Plus size={18} />
             <span>إضافة مجموعة جديدة</span>
