@@ -37,7 +37,6 @@
 
   /* Smaller/Subtle shadow for small buttons */
   .neu-sm-flat {
-    background: #F0F0F0;
     box-shadow:
       -0.3px -0.3px 0.6px 0px rgba(198, 198, 199, 0.50),
       0.3px 0.3px 0.6px 0px rgba(255, 255, 255, 0.30),

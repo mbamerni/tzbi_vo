@@ -109,15 +109,10 @@ function MiniCircularProgress({
 
   return (
     <div className="relative flex items-center justify-center flex-shrink-0" style={{ width: size, height: size }}>
-      {/* Neumorphic circle background padding inside the progress ring */}
-      <div
-        className="absolute inset-0 m-auto rounded-full neu-sm-flat"
-        style={{ width: size - strokeWidth * 2, height: size - strokeWidth * 2 }}
-      />
       <svg
         height={size}
         width={size}
-        className="absolute inset-0 transform -rotate-90 pointer-events-none z-0"
+        className="absolute inset-0 transform -rotate-90 pointer-events-none"
       >
         {/* Background Ring */}
         <circle
