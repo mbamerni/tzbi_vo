@@ -1383,8 +1383,9 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
         {/* THE BIG BUTTON */}
         <button
           onClick={handleTap}
-          className={`w-full relative h-full min-h-[300px] flex-1 rounded-[28px] flex flex-col items-center p-6 transition-all overflow-hidden border-0
-                ${isComplete ? "bg-primary/5" : "neu-button-custom active:scale-[0.99]"} 
+          className={`w-full relative h-full min-h-[300px] flex-1 rounded-[28px] flex flex-col items-center p-6 transition-all overflow-hidden border-0 bg-[#F0F0F0]
+                ${isComplete ? "opacity-90" : ""} 
+                ${tapAnimation ? "neu-pressed scale-[0.99]" : "neu-flat hover:neu-flat"} 
             `}
         >
 
