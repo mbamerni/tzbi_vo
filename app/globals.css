@@ -19,7 +19,7 @@
   /* --- Neumorphic Utilities from Figma --- */
   .neu-flat {
     background: #F0F0F0;
-    box-shadow: 
+    box-shadow:
       -0.946px -0.946px 1.892px 0px rgba(255, 255, 255, 0.90),
       0.946px 0.946px 2.366px 0px rgba(198, 198, 199, 0.90),
       inset 0.946px -0.946px 1.892px 0px rgba(198, 198, 199, 0.20),
@@ -28,7 +28,7 @@
 
   .neu-pressed {
     background: #F0F0F0;
-    box-shadow: 
+    box-shadow:
       inset 0.946px 0.946px 1.419px 0px rgba(198, 198, 199, 0.90),
       inset -0.946px -0.946px 0.946px 0px rgba(255, 255, 255, 0.90),
       inset 0.946px -0.946px 0.946px 0px rgba(198, 198, 199, 0.20),
@@ -37,6 +37,7 @@
 
   /* Smaller/Subtle shadow for small buttons */
   .neu-sm-flat {
+    background: #F0F0F0;
     box-shadow:
       -0.3px -0.3px 0.6px 0px rgba(198, 198, 199, 0.50),
       0.3px 0.3px 0.6px 0px rgba(255, 255, 255, 0.30),
