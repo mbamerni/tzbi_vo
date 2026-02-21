@@ -420,10 +420,12 @@ function GroupFilter({
   groups,
   selectedGroupId,
   onSelectGroup,
+  counters,
 }: {
   groups: DhikrGroup[];
   selectedGroupId: string | "all";
   onSelectGroup: (id: string | "all") => void;
+  counters: Record<string, number>;
 }) {
   return (
     <div className="flex gap-2 overflow-x-auto px-4 py-1.5 scrollbar-hide snap-x">
@@ -438,16 +440,21 @@ function GroupFilter({
       </button>
       {groups.map((group) => {
         const isSelected = selectedGroupId === group.id;
+        const complete = group.adhkar.length > 0 && group.adhkar.every(d => (counters[d.id] || 0) >= d.target);
+
         return (
           <button
             key={group.id}
             onClick={() => onSelectGroup(group.id)}
-            className={`px-3 h-[19px] rounded-[9px] text-[11px] font-medium transition-all whitespace-nowrap flex items-center justify-center min-w-fit ${isSelected
+            className={`px-3 h-[19px] rounded-[9px] text-[11px] font-medium transition-all whitespace-nowrap flex items-center justify-center min-w-fit gap-1 ${isSelected
               ? "bg-[#A72703] text-[#FFFFFF] neu-sm-flat"
-              : "bg-[#F0F0F0] text-[#6F6F6F] neu-sm-flat"
+              : complete
+                ? "bg-[#F0F0F0] text-primary neu-sm-flat"
+                : "bg-[#F0F0F0] text-[#6F6F6F] neu-sm-flat"
               }`}
           >
-            {group.name}
+            <span>{group.name}</span>
+            {complete && <Star size={10} className="text-yellow-500 fill-yellow-500 shrink-0" />}
           </button>
         );
       })}
@@ -544,12 +551,6 @@ function DhikrCardsSlider({
                 </motion.span>
               </div>
             </div>
-
-            {isComplete && (
-              <div className="absolute top-2 left-2">
-                <Star size={10} className="text-yellow-500 fill-yellow-500" />
-              </div>
-            )}
           </button>
         );
       })}
@@ -1356,6 +1357,7 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
           groups={displayedGroups}
           selectedGroupId={selectedGroupId}
           onSelectGroup={setSelectedGroupId}
+          counters={counters}
         />
       </div>
 
