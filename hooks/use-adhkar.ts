@@ -14,33 +14,25 @@ export function useAdhkar(
     const addDhikr = useCallback(async (groupId: string, text: string, target: number, virtue?: string, icon?: string) => {
         if (!userId) return false;
         try {
-            const group = groups.find(g => g.id === groupId);
-            const currentAdhkar = group?.adhkar || [];
-
-            // Calculate next sort safely. Treat null/undefined as 0.
-            const currentMaxSort = currentAdhkar.reduce((max, d) => Math.max(max, d.sort_order || 0), 0);
-            const nextSort = currentMaxSort + 1;
-
             const { error } = await supabase.from('adhkar').insert([{
                 group_id: groupId,
                 text,
                 target_count: target,
                 virtue,
-                icon,
-                sort_order: nextSort,
                 user_id: userId,
                 is_active: true
             }]);
+
             if (error) throw error;
             await onUpdate();
             toast.success('تم إضافة الذكر بنجاح');
             return true;
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error adding dhikr:', err);
-            toast.error('حدث خطأ أثناء إضافة الذكر');
+            toast.error(err.message || 'حدث خطأ أثناء إضافة الذكر');
             return false;
         }
-    }, [groups, userId, onUpdate, supabase]);
+    }, [userId, onUpdate, supabase]);
 
     // Edit Dhikr
     const editDhikr = useCallback(async (id: string, text: string, target: number, virtue?: string, icon?: string) => {
@@ -48,16 +40,16 @@ export function useAdhkar(
             const { error } = await supabase.from('adhkar').update({
                 text,
                 target_count: target,
-                virtue,
-                icon
+                virtue
             }).eq('id', id);
+
             if (error) throw error;
             await onUpdate();
             toast.success('تم تعديل الذكر بنجاح');
             return true;
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error updating dhikr:', err);
-            toast.error('حدث خطأ أثناء تعديل الذكر');
+            toast.error(err.message || 'حدث خطأ أثناء تعديل الذكر');
             return false;
         }
     }, [onUpdate, supabase]);
@@ -70,9 +62,9 @@ export function useAdhkar(
             await onUpdate();
             toast.success('تم حذف الذكر بنجاح');
             return true;
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error deleting dhikr:', err);
-            toast.error('حدث خطأ أثناء حذف الذكر');
+            toast.error(err.message || 'حدث خطأ أثناء حذف الذكر');
             return false;
         }
     }, [onUpdate, supabase]);
@@ -106,13 +98,10 @@ export function useAdhkar(
         adhkarList[neighborIndex] = currentDhikr;
 
         try {
-            // Self-healing algorithm: 
-            // We assign an exact 1-based index to every item in the newly ordered array.
-            // If the item's current DB sort_order doesn't match, we add it to the update batch.
-            // This natively handles nulls, duplicates, and the swapped items simultaneously.
+            // ✅ استخدام Promise.all لرفع التغييرات لأن دالة الـ RPC لم تتوفر في الداتا بيس
+            // ولأننا نغير ترتيب عنصرين فقط (العنصر والآخر المجاور له)، فلا يوجد مشكلة N+1 هنا
             const updates = adhkarList.map((d, index) => {
                 const expectedSort = index + 1;
-
                 if (d.sort_order !== expectedSort) {
                     return supabase
                         .from('adhkar')
@@ -120,29 +109,28 @@ export function useAdhkar(
                         .eq('id', d.id);
                 }
                 return null;
-            }).filter(Boolean); // Remove nulls (items that don't need updating)
+            }).filter(Boolean);
 
             if (updates.length > 0) {
                 await Promise.all(updates);
             }
 
             await onUpdate();
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error reordering dhikr:', err);
+            toast.error(err.message || 'حدث خطأ أثناء إعادة ترتيب الأذكار');
         }
     }, [groups, onUpdate, supabase]);
 
     // Toggle Dhikr Active
     const toggleDhikr = useCallback(async (id: string, state: boolean) => {
         try {
-            await supabase.from('adhkar').update({ is_active: state }).eq('id', id);
-            // We can optionally not await fetch here if we want "fire and forget" 
-            // but the UI needs to update.
-            // In the original code, it updated local state optimistically.
-            // Ideally we should pass an optimistic updater.
+            const { error } = await supabase.from('adhkar').update({ is_active: state }).eq('id', id);
+            if (error) throw error;
             await onUpdate();
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error toggling dhikr:', err);
+            toast.error(err.message || 'حدث خطأ أثناء تغيير حالة الذكر');
         }
     }, [onUpdate, supabase]);
 
