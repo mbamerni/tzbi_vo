@@ -1,4 +1,4 @@
-"use client";
+use client;
 
 import React, { useState, useEffect, useCallback } from "react";
 import useEmblaCarousel from "embla-carousel-react";
@@ -51,7 +51,7 @@ export default function QuranViewerScreen({ initialPage, onBack }: QuranViewerSc
                                         {isClose ? (
                                             <img
                                                 src={`https://raw.githubusercontent.com/GovarJabbar/Quran-PNG/master/${pageNum.toString().padStart(3, '0')}.png`}
-                                                alt={`Page ${pageNum}`}
+                                                alt={`Page ${pageNum}`} 
                                                 className="w-full h-full object-contain dark:invert hue-rotate-[345deg] saturate-[1022%] brightness-[92%] contrast-[85%] sepia-[21%] invert-[21%] dark:!hue-rotate-0 dark:!saturate-100 dark:!brightness-100 dark:!contrast-100 dark:!sepia-0 dark:!invert"
                                                 loading="lazy"
                                             />
@@ -68,10 +68,17 @@ export default function QuranViewerScreen({ initialPage, onBack }: QuranViewerSc
                 </div>
             </div>
 
+            {/* Bottom Page Number Display */}
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/40 to-transparent py-4 flex items-center justify-center pointer-events-none">
+                <div className="text-center font-bold text-white text-base drop-shadow-lg">
+                    صفحة {currentPage}
+                </div>
+            </div>
+
             {/* Overlays */}
             <AnimatePresence>
                 {controlsVisible && (
-                    <>
+                    <> 
                         {/* Top Bar */}
                         <motion.div
                             initial={{ y: -100, opacity: 0 }}
