@@ -44,15 +44,10 @@ const StatsIcon = ({ active }: { active: boolean }) => (
     </svg>
 );
 
-const ExtraIcon = ({ active }: { active: boolean }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22" fill="none">
-        <path
-            d="M17.4167 19.25L11 14.6667L4.58334 19.25V4.58333C4.58334 4.0971 4.7765 3.63079 5.12031 3.28697C5.46413 2.94315 5.93045 2.75 6.41668 2.75H15.5833C16.0696 2.75 16.5359 2.94315 16.8797 3.28697C17.2235 3.63079 17.4167 4.0971 17.4167 4.58333V19.25Z"
-            stroke={active ? "#84994F" : "#6F6F6F"}
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        />
+const QuranIcon = ({ active }: { active: boolean }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ stroke: active ? "#84994F" : "#6F6F6F" }}>
+        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
     </svg>
 );
 
@@ -66,7 +61,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
         { id: "focus", Icon: FocusIcon },
         { id: "groups", Icon: GroupsIcon },
         { id: "stats", Icon: StatsIcon },
-        { id: "extra", Icon: ExtraIcon },
+        { id: "quran", Icon: QuranIcon },
     ];
 
     return (

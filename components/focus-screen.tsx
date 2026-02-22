@@ -1092,24 +1092,12 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
       for (let i = 0; i < newQueue.length; i++) {
         const item = newQueue[i];
         try {
-          // Check existing
-          const { data: existing } = await supabase
-            .from("daily_logs")
-            .select("id")
-            .eq("dhikr_id", item.dhikrId)
-            .eq("log_date", item.dateStr)
-            .single();
-
-          if (existing) {
-            await supabase.from("daily_logs").update({ count: item.count }).eq("id", existing.id);
-          } else {
-            await supabase.from("daily_logs").insert({
-              dhikr_id: item.dhikrId,
-              count: item.count,
-              log_date: item.dateStr,
-              user_id: userId
-            });
-          }
+          await supabase.from("daily_logs").upsert({
+            dhikr_id: item.dhikrId,
+            count: item.count,
+            log_date: item.dateStr,
+            user_id: userId
+          }, { onConflict: 'dhikr_id, log_date' });
           // Remove from queue if successful (mark for removal)
           newQueue[i] = null;
         } catch (e) {
@@ -1137,41 +1125,26 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
     return () => window.removeEventListener('online', syncOfflineData);
   }, [supabase]);
 
-  // Save to DB function with Offline Fallback
-  const saveToDb = async (dhikrId: string, count: number, dateObj: Date) => {
-    const dateStr = format(dateObj, "yyyy-MM-dd");
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) return; // Should handle anon auth too if enabled
-
+  const saveToDb = async (dhikrId: string, count: number, date: Date) => {
     try {
-      // Check for existing record first to avoid ON CONFLICT issues
-      const { data: existing } = await supabase
-        .from("daily_logs")
-        .select("id")
-        .eq("user_id", session.user.id)
-        .eq("dhikr_id", dhikrId)
-        .eq("log_date", dateStr)
-        .maybeSingle();
+      const dateStr = format(date, "yyyy-MM-dd");
+      const { data: { session } } = await supabase.auth.getSession();
 
-      let error;
-
-      if (existing) {
-        const { error: updateError } = await supabase
-          .from("daily_logs")
-          .update({ count }) // Removed updated_at
-          .eq("id", existing.id);
-        error = updateError;
-      } else {
-        const { error: insertError } = await supabase
-          .from("daily_logs")
-          .insert({
-            user_id: session.user.id,
-            dhikr_id: dhikrId,
-            log_date: dateStr,
-            count: count
-          });
-        error = insertError;
+      if (!session?.user?.id) {
+        console.warn("No user session, cannot save to DB.");
+        return;
       }
+
+      const { error: upsertError } = await supabase
+        .from("daily_logs")
+        .upsert({
+          user_id: session.user.id,
+          dhikr_id: dhikrId,
+          log_date: dateStr,
+          count: count
+        }, { onConflict: 'dhikr_id, log_date' });
+
+      let error = upsertError;
 
       if (error) throw error;
 
@@ -1187,6 +1160,7 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
       setErrorMessage("تعذر الاتصال. سيتم الحفظ تلقائياً عند عودة الإنترنت.");
 
       // Save directly to localStorage queue
+      const dateStr = format(date, "yyyy-MM-dd");
       const queueItem = { dhikrId, count, dateStr, timestamp: Date.now() };
 
       const currentQueue = JSON.parse(localStorage.getItem('offline_queue') || '[]');

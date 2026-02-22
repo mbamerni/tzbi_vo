@@ -13,7 +13,8 @@ export function useAdhkarData() {
         editGroup,
         deleteGroup,
         reorderGroup,
-        toggleGroup
+        toggleGroup,
+        setGroups
     } = useGroups(userId);
 
     const {
@@ -22,7 +23,7 @@ export function useAdhkarData() {
         deleteDhikr,
         reorderDhikr,
         toggleDhikr
-    } = useAdhkar(userId, groups, fetchGroups);
+    } = useAdhkar(userId, groups, setGroups, fetchGroups);
 
     const loading = authLoading || groupsLoading;
 

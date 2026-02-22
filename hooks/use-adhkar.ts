@@ -6,7 +6,8 @@ import { toast } from 'sonner';
 export function useAdhkar(
     userId: string | null,
     groups: DhikrGroup[],
-    onUpdate: () => Promise<void> | void
+    setGroups: React.Dispatch<React.SetStateAction<DhikrGroup[]>>,
+    onUpdate: () => Promise<void | DhikrGroup[]> | void
 ) {
     const [supabase] = useState(() => createClient());
 
@@ -87,20 +88,35 @@ export function useAdhkar(
         if (groupIndex === -1 || dhikrIndex === -1) return;
 
         const group = groups[groupIndex];
-        const adhkarList = [...group.adhkar]; // Clone the array for mutation
         const neighborIndex = direction === 'up' ? dhikrIndex - 1 : dhikrIndex + 1;
 
-        if (neighborIndex < 0 || neighborIndex >= adhkarList.length) return;
+        if (neighborIndex < 0 || neighborIndex >= group.adhkar.length) return;
 
-        // Swap the elements in memory
-        const currentDhikr = adhkarList[dhikrIndex];
-        adhkarList[dhikrIndex] = adhkarList[neighborIndex];
-        adhkarList[neighborIndex] = currentDhikr;
+        // --- Optimistic Update ---
+        const previousGroups = [...groups]; // Backup for rollback
 
+        setGroups(prev => {
+            const newGroups = [...prev];
+            const newAdhkarList = [...newGroups[groupIndex].adhkar];
+
+            const currentDhikr = newAdhkarList[dhikrIndex];
+            newAdhkarList[dhikrIndex] = newAdhkarList[neighborIndex];
+            newAdhkarList[neighborIndex] = currentDhikr;
+
+            newGroups[groupIndex] = { ...newGroups[groupIndex], adhkar: newAdhkarList };
+            return newGroups;
+        });
+
+        // --- Database Update ---
         try {
-            // ✅ استخدام Promise.all لرفع التغييرات لأن دالة الـ RPC لم تتوفر في الداتا بيس
-            // ولأننا نغير ترتيب عنصرين فقط (العنصر والآخر المجاور له)، فلا يوجد مشكلة N+1 هنا
-            const updates = adhkarList.map((d, index) => {
+            // Find the state AFTER our optimistic logic via index directly from the backup layout to safely upload sorted keys
+            const { adhkar: backupAdhkar } = previousGroups[groupIndex];
+            const dbList = [...backupAdhkar];
+            const temp = dbList[dhikrIndex];
+            dbList[dhikrIndex] = dbList[neighborIndex];
+            dbList[neighborIndex] = temp;
+
+            const updates = dbList.map((d, index) => {
                 const expectedSort = index + 1;
                 if (d.sort_order !== expectedSort) {
                     return supabase
@@ -115,24 +131,38 @@ export function useAdhkar(
                 await Promise.all(updates);
             }
 
-            await onUpdate();
+            // Sync other clients optionally without blocking user
+            onUpdate();
         } catch (err: any) {
             console.error('Error reordering dhikr:', err);
             toast.error(err.message || 'حدث خطأ أثناء إعادة ترتيب الأذكار');
+            setGroups(previousGroups); // Rollback
         }
-    }, [groups, onUpdate, supabase]);
+    }, [groups, onUpdate, setGroups, supabase]);
 
     // Toggle Dhikr Active
     const toggleDhikr = useCallback(async (id: string, state: boolean) => {
+        const previousGroups = [...groups]; // Backup for rollback
+
+        // Optimistic UI Update
+        setGroups(prevGroups => prevGroups.map(group => ({
+            ...group,
+            adhkar: group.adhkar.map(dhikr =>
+                dhikr.id === id ? { ...dhikr, is_active: state } : dhikr
+            )
+        })));
+
+        // Background Database Mutation
         try {
             const { error } = await supabase.from('adhkar').update({ is_active: state }).eq('id', id);
             if (error) throw error;
-            await onUpdate();
+            onUpdate(); // Optional silent sync
         } catch (err: any) {
             console.error('Error toggling dhikr:', err);
             toast.error(err.message || 'حدث خطأ أثناء تغيير حالة الذكر');
+            setGroups(previousGroups); // Rolback
         }
-    }, [onUpdate, supabase]);
+    }, [groups, onUpdate, setGroups, supabase]);
 
     return {
         addDhikr,

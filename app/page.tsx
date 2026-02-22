@@ -5,10 +5,11 @@ import { useAdhkarData } from "@/hooks/use-adhkar-data";
 import FocusScreen from "@/components/focus-screen";
 import GroupsScreen from "@/components/groups-screen";
 import AnalyticsScreen from "@/components/analytics-screen";
+import QuranScreen from "@/components/quran-screen";
 import { BottomNav } from "@/components/bottom-nav";
 import { Loader2 } from "lucide-react";
 
-type Tab = "focus" | "groups" | "stats" | "extra";
+type Tab = "focus" | "groups" | "stats" | "quran";
 
 export default function Page() {
   const [activeTab, setActiveTab] = useState<Tab>("focus");
@@ -71,15 +72,9 @@ export default function Page() {
             <AnalyticsScreen />
           </div>
         )}
-        {activeTab === "extra" && (
-          <div className="absolute inset-0 animate-in fade-in slide-in-from-bottom-4 duration-500 flex items-center justify-center bg-background pb-[85px]">
-            <div className="text-center p-8">
-              <h3 className="text-xl font-bold text-muted-foreground mb-2">قريباً</h3>
-              <p className="text-muted-foreground/70 mb-4">سيتم تنشيط هذه الشاشة في التحديث القادم.</p>
-              <div className="text-[10px] text-muted-foreground/20 font-mono select-all">
-                User ID: {userId}
-              </div>
-            </div>
+        {activeTab === "quran" && (
+          <div className="absolute inset-0 animate-in fade-in slide-in-from-bottom-4 duration-500 bg-background pb-[85px]">
+            <QuranScreen />
           </div>
         )}
       </main>
