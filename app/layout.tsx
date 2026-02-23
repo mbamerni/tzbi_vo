@@ -40,7 +40,7 @@ export default function RootLayout({
     <html lang="ar" dir="rtl" className="bg-background" suppressHydrationWarning>
       <body className={`font-sans antialiased ${_amiri.variable}`}>
         {children}
-        <Toaster />
+        <Toaster position="top-center" />
       </body>
     </html>
   );
