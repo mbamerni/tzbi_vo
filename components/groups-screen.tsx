@@ -179,6 +179,20 @@ function DhikrFormModal({
             />
           </div>
 
+          {/* Virtue - manual input */}
+          <div>
+            <label className="block text-sm font-medium text-card-foreground mb-1.5">
+              فضل الذكر (اختياري)
+            </label>
+            <textarea
+              value={virtue}
+              onChange={(e) => setVirtue(e.target.value)}
+              placeholder="اكتب فضل الذكر هنا أو استخدم الذكاء الاصطناعي..."
+              className="w-full p-3 rounded-xl text-foreground text-sm resize-none h-20 focus:outline-none neu-pressed"
+              dir="rtl"
+            />
+          </div>
+
           {/* Target */}
           <div>
             <label className="block text-sm font-medium text-card-foreground mb-1.5">
@@ -260,22 +274,6 @@ function DhikrFormModal({
               </div>
             )}
           </div>
-
-          {/* Virtue - manual input */}
-          <div>
-            <label className="block text-sm font-medium text-card-foreground mb-1.5">
-              فضل الذكر (اختياري)
-            </label>
-            <textarea
-              value={virtue}
-              onChange={(e) => setVirtue(e.target.value)}
-              placeholder="اكتب فضل الذكر هنا أو استخدم الذكاء الاصطناعي..."
-              className="w-full p-3 rounded-xl text-foreground text-sm resize-none h-20 focus:outline-none neu-pressed"
-              dir="rtl"
-            />
-          </div>
-
-
 
           <button
             type="button"
