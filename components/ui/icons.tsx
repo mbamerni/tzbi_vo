@@ -62,7 +62,10 @@ export function getGroupIcon(icon: string, size = 20) {
 
 export function getDhikrIconData(icon?: string) {
     if (!icon) return null;
-    return ICON_OPTIONS.find((o) => o.value === icon);
+    const [value, color] = icon.split(':');
+    const base = ICON_OPTIONS.find((o) => o.value === value);
+    if (!base) return null;
+    return { ...base, color: color || base.color };
 }
 
 export function getDhikrIcon(icon?: string) {

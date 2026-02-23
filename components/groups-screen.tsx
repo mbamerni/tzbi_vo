@@ -75,9 +75,25 @@ function getGroupIcon(icon: string, size = 20) {
   }
 }
 
+export const THEME_COLORS = [
+  "#84994f", // Primary Green
+  "#A72703", // Primary Red
+  "#f59e0b", // Amber
+  "#6366f1", // Indigo
+  "#ec4899", // Pink
+  "#8b5cf6", // Purple
+  "#14b8a6", // Teal
+  "#3b82f6", // Blue
+  "#0ea5e9", // Sky Blue
+  "#6f6f6f", // Neutral Gray
+];
+
 export function getDhikrIconData(icon?: string) {
   if (!icon) return null;
-  return ICON_OPTIONS.find((o) => o.value === icon);
+  const [value, color] = icon.split(':');
+  const base = ICON_OPTIONS.find((o) => o.value === value);
+  if (!base) return null;
+  return { ...base, color: color || base.color };
 }
 
 function getDhikrIcon(icon?: string) {
@@ -108,12 +124,21 @@ function DhikrFormModal({
 }: DhikrFormModalProps) {
   const [text, setText] = useState(initialData?.text || "");
   const [target, setTarget] = useState(initialData?.target || 33);
-  const [selectedIcon, setSelectedIcon] = useState<string>(
-    initialData?.icon || ""
-  );
+
+  const initialIconString = initialData?.icon || "";
+  const [initialIconName, initialIconColor] = initialIconString.includes(':')
+    ? initialIconString.split(':')
+    : [initialIconString, ""];
+
+  const baseOpt = ICON_OPTIONS.find(o => o.value === initialIconName);
+
+  const [selectedIconName, setSelectedIconName] = useState<string>(initialIconName || "");
+  const [selectedColor, setSelectedColor] = useState<string>(initialIconColor || baseOpt?.color || THEME_COLORS[0]);
+
   const [virtue, setVirtue] = useState(initialData?.virtue || "");
   const [searching, setSearching] = useState(false);
   const [showIconPicker, setShowIconPicker] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
 
 
 
@@ -176,15 +201,15 @@ function DhikrFormModal({
             <button
               type="button"
               onClick={() => setShowIconPicker(!showIconPicker)}
-              className="flex items-center gap-2 p-3 rounded-xl text-foreground text-sm w-full min-h-[44px] neu-flat active:neu-pressed"
+              className="flex items-center gap-2 p-3 rounded-xl text-foreground text-sm w-full min-h-[44px] neu-flat active:neu-pressed transition-all"
             >
-              {selectedIcon ? (
+              {selectedIconName ? (
                 <>
-                  <span style={{ color: ICON_OPTIONS.find((o) => o.value === selectedIcon)?.color }}>
-                    {getGroupIcon(selectedIcon)}
+                  <span style={{ color: selectedColor }}>
+                    {getGroupIcon(selectedIconName)}
                   </span>
                   <span>
-                    {ICON_OPTIONS.find((o) => o.value === selectedIcon)?.label}
+                    {ICON_OPTIONS.find((o) => o.value === selectedIconName)?.label}
                   </span>
                 </>
               ) : (
@@ -198,21 +223,40 @@ function DhikrFormModal({
                     key={opt.value}
                     type="button"
                     onClick={() => {
-                      setSelectedIcon(
-                        opt.value === selectedIcon ? "" : opt.value
-                      );
+                      setSelectedIconName(opt.value);
                       setShowIconPicker(false);
+                      setShowColorPicker(true);
                     }}
-                    className={`flex items-center justify-center p-3 rounded-xl transition-all min-h-[48px] ${selectedIcon === opt.value
-                      ? "neu-pressed"
-                      : "neu-flat hover:neu-pressed"
+                    className={`flex items-center justify-center p-3 rounded-xl transition-all min-h-[48px] ${selectedIconName === opt.value
+                      ? "neu-pressed text-primary"
+                      : "neu-flat hover:neu-pressed text-[#6f6f6f]"
                       }`}
                   >
-                    <div style={{ color: opt.color }}>
+                    <div>
                       {opt.icon}
                     </div>
                   </button>
                 ))}
+              </div>
+            )}
+
+            {showColorPicker && (
+              <div className="mt-2 p-4 rounded-2xl neu-pressed">
+                <p className="text-sm text-muted-foreground mb-4 font-medium">اختر لوناً للأيقونة:</p>
+                <div className="flex flex-wrap gap-3 justify-center">
+                  {THEME_COLORS.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => {
+                        setSelectedColor(c);
+                        setShowColorPicker(false);
+                      }}
+                      className={`w-9 h-9 rounded-full transition-transform active:scale-90 ${selectedColor === c ? 'scale-110 shadow-md ring-2 ring-primary ring-offset-2 ring-offset-[#F0F0F0]' : 'hover:scale-105'}`}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -237,10 +281,11 @@ function DhikrFormModal({
             type="button"
             onClick={() => {
               if (text.trim()) {
+                const finalIcon = selectedIconName ? `${selectedIconName}:${selectedColor}` : undefined;
                 onSave({
                   text: text.trim(),
                   target,
-                  icon: selectedIcon || undefined,
+                  icon: finalIcon,
                   virtue:
                     virtue.trim() || "لم يتم إضافة فضل لهذا الذكر بعد.",
                 });
