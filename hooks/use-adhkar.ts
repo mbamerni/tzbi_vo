@@ -20,6 +20,7 @@ export function useAdhkar(
                 text,
                 target_count: target,
                 virtue,
+                icon,
                 user_id: userId,
                 is_active: true
             }]);
@@ -41,7 +42,8 @@ export function useAdhkar(
             const { error } = await supabase.from('adhkar').update({
                 text,
                 target_count: target,
-                virtue
+                virtue,
+                icon
             }).eq('id', id);
 
             if (error) throw error;

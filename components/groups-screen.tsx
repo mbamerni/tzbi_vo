@@ -214,7 +214,14 @@ function DhikrFormModal({
             </label>
             <button
               type="button"
-              onClick={() => setShowIconPicker(!showIconPicker)}
+              onClick={() => {
+                if (showIconPicker || showColorPicker) {
+                  setShowIconPicker(false);
+                  setShowColorPicker(false);
+                } else {
+                  setShowIconPicker(true);
+                }
+              }}
               className="flex items-center gap-2 p-3 rounded-xl text-foreground text-sm w-full min-h-[44px] neu-flat active:neu-pressed transition-all"
             >
               {selectedIconName ? (
@@ -231,7 +238,7 @@ function DhikrFormModal({
               )}
             </button>
             {showIconPicker && (
-              <div className="grid grid-cols-4 gap-2 mt-2 p-4 rounded-2xl neu-pressed">
+              <div className="grid grid-cols-5 gap-2 mt-2 p-3 rounded-2xl neu-pressed animate-in fade-in slide-in-from-top-1 duration-200">
                 {ICON_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
@@ -241,7 +248,7 @@ function DhikrFormModal({
                       setShowIconPicker(false);
                       setShowColorPicker(true);
                     }}
-                    className={`flex items-center justify-center p-3 rounded-xl transition-all min-h-[48px] ${selectedIconName === opt.value
+                    className={`flex items-center justify-center p-2.5 rounded-xl transition-all min-h-[44px] ${selectedIconName === opt.value
                       ? "neu-pressed text-primary"
                       : "neu-flat hover:neu-pressed text-[#6f6f6f]"
                       }`}
@@ -255,9 +262,18 @@ function DhikrFormModal({
             )}
 
             {showColorPicker && (
-              <div className="mt-2 p-4 rounded-2xl neu-pressed">
-                <p className="text-sm text-muted-foreground mb-4 font-medium">اختر لوناً للأيقونة:</p>
-                <div className="flex flex-wrap gap-3 justify-center">
+              <div className="mt-2 p-3 rounded-2xl neu-pressed animate-in fade-in slide-in-from-top-1 duration-200">
+                <div className="flex justify-between items-center px-1 mb-3">
+                  <p className="text-xs text-muted-foreground font-medium">لون الأيقونة المفضل:</p>
+                  <button
+                    type="button"
+                    onClick={() => { setShowColorPicker(false); setShowIconPicker(true); }}
+                    className="text-xs text-[#84994f] font-medium active:opacity-70"
+                  >
+                    العودة للأيقونات
+                  </button>
+                </div>
+                <div className="grid grid-cols-5 gap-2">
                   {THEME_COLORS.map((c) => (
                     <button
                       key={c}
@@ -266,9 +282,15 @@ function DhikrFormModal({
                         setSelectedColor(c);
                         setShowColorPicker(false);
                       }}
-                      className={`w-9 h-9 rounded-full transition-transform active:scale-90 ${selectedColor === c ? 'scale-110 shadow-md ring-2 ring-primary ring-offset-2 ring-offset-[#F0F0F0]' : 'hover:scale-105'}`}
-                      style={{ backgroundColor: c }}
-                    />
+                      className={`flex items-center justify-center p-2.5 rounded-xl transition-all min-h-[44px] ${selectedColor === c
+                        ? "neu-pressed opacity-100"
+                        : "neu-flat hover:neu-pressed opacity-90"
+                        }`}
+                    >
+                      <div style={{ color: c }}>
+                        {getGroupIcon(selectedIconName, 22)}
+                      </div>
+                    </button>
                   ))}
                 </div>
               </div>
