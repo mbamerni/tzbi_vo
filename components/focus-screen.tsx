@@ -724,6 +724,9 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
   // This ensures that if the user adds/removes items in the "Groups" tab,
   // those changes reflect in "Today's" schedule, but NOT "Yesterday's".
   useEffect(() => {
+    // Don't overwrite schedule with empty state while groups are still loading
+    if (groups.length === 0) return;
+
     // We only want to auto-update the schedule for the SYSTEM "Today".
     // Past days should remain frozen with their existing snapshots.
     const todayStr = format(new Date(), 'yyyy-MM-dd');
@@ -792,7 +795,16 @@ export default function FocusScreen({ groups, onNavigateToGroups }: FocusScreenP
     }
   }, [activeDhikrId]);
 
-  // Set initial active dhikr when data loads or filter changes
+  // Reset selectedGroupId if it points to a group not in displayedGroups (stale localStorage)
+  useEffect(() => {
+    if (selectedGroupId === "all") return;
+    if (displayedGroups.length === 0) return;
+    const groupExists = displayedGroups.find(g => g.id === selectedGroupId);
+    if (!groupExists) {
+      setSelectedGroupId("all");
+    }
+  }, [displayedGroups, selectedGroupId]);
+
   // Set initial active dhikr when data loads or filter changes
   useEffect(() => {
     // Only proceed if we have visible adhkar
