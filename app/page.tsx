@@ -5,14 +5,13 @@ import { useAdhkarData } from "@/hooks/use-adhkar-data";
 import FocusScreen from "@/components/focus-screen";
 import GroupsScreen from "@/components/groups-screen";
 import AnalyticsScreen from "@/components/analytics-screen";
-import QuranRepetitionScreen from "@/components/quran-repetition-screen";
 import { BottomNav } from "@/components/bottom-nav";
 import { Loader2 } from "lucide-react";
 
-type Tab = "focus" | "groups" | "stats" | "quran";
+type Tab = "focus" | "groups" | "stats";
 
 export default function Page() {
-  const [activeTab, setActiveTab] = useState<Tab>("quran");
+  const [activeTab, setActiveTab] = useState<Tab>("focus");
   const {
     groups,
     activeGroups,
@@ -72,11 +71,6 @@ export default function Page() {
             <AnalyticsScreen />
           </div>
         )}
-        {activeTab === "quran" && (
-          <div className="absolute inset-0 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-[85px] overflow-y-auto">
-            <QuranRepetitionScreen />
-          </div>
-        )}
       </main>
 
       {/* Bottom Navigation */}
@@ -84,4 +78,3 @@ export default function Page() {
     </div>
   );
 }
-
